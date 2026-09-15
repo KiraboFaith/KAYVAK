@@ -1,23 +1,37 @@
+import { useState, useEffect } from 'react';
 import StatCard from './StatCard';
 import StatusPanel from './StatusPanel';
 import ActionLog from './ActionLog';
 
 function Dashboard() {
-  const mockLog = [
-    'Monitored: Temp 24°C, Humidity 58% — within normal range',
-    'Analyzed: No anomaly detected',
-    'Planned: No action needed',
-    'Executed: System idle',
-  ];
+  const [data, setData] = useState(null);
+
+ useEffect(() => {
+  const fetchData = () => {
+    fetch('http://127.0.0.1:8000/api/sensors/data/')
+      .then((res) => res.json())
+      .then((json) => setData(json))
+      .catch((err) => console.error('Failed to fetch sensor data:', err));
+  };
+
+  fetchData(); // initial load
+  const interval = setInterval(fetchData, 5000); // poll every 5s
+
+  return () => clearInterval(interval); // cleanup on unmount
+}, []);
+
+  if (!data) {
+    return <p style={{ padding: '24px' }}>Loading sensor data...</p>;
+  }
 
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', gap: '16px' }}>
-        <StatCard label="Temperature" value={24} unit="°C" />
-        <StatCard label="Humidity" value={58} unit="%" />
-        <StatusPanel status="Normal" />
+        <StatCard label="Temperature" value={data.temperature} unit="°C" />
+        <StatCard label="Humidity" value={data.humidity} unit="%" />
+        <StatusPanel status={data.status} />
       </div>
-      <ActionLog entries={mockLog} />
+      <ActionLog entries={data.log} />
     </div>
   );
 }
