@@ -1,17 +1,16 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from .models import SensorReading
+
 
 @api_view(['GET'])
 def sensor_data(request):
+    reading = SensorReading.objects.latest('timestamp')
+
     data = {
-        'temperature': 24,
-        'humidity': 58,
-        'status': 'Normal',
-        'log': [
-            'Monitored: Temp 24°C, Humidity 58% — within normal range',
-            'Analyzed: No anomaly detected',
-            'Planned: No action needed',
-            'Executed: System idle',
-        ],
+        'temperature': reading.temperature,
+        'humidity': reading.humidity,
+        'status': reading.status,
+        'log': [reading.log_entry],
     }
     return Response(data)
