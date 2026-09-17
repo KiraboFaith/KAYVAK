@@ -4,6 +4,8 @@ ml-model/data/
 ml-model/.ipynb_checkpoints/
 *.pkl
 *.joblib
+__pycache__/
+*.pyc
 
 # Existing (keep these if already there)
 backend/venv/
