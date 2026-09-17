@@ -1,7 +1,11 @@
-node_modules/
-frontend/dist/
+# ML model
+ml-model/venv/
+ml-model/data/
+ml-model/.ipynb_checkpoints/
+*.pkl
+*.joblib
+
+# Existing (keep these if already there)
 backend/venv/
-__pycache__/
-*.pyc
-db.sqlite3
-.env
+backend/db.sqlite3
+frontend/node_modules/

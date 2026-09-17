@@ -14,3 +14,5 @@ def sensor_data(request):
         'log': [reading.log_entry],
     }
     return Response(data)
+
+
