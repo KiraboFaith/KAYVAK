@@ -1,37 +1,53 @@
 import { useState, useEffect } from 'react';
 import StatCard from './StatCard';
 import StatusPanel from './StatusPanel';
-import ActionLog from './ActionLog';
+import FindingCard from './FindingCard';
 
 function Dashboard() {
-  const [data, setData] = useState(null);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
 
- useEffect(() => {
-  const fetchData = () => {
-    fetch('http://127.0.0.1:8000/api/sensors/data/')
-      .then((res) => res.json())
-      .then((json) => setData(json))
-      .catch((err) => console.error('Failed to fetch sensor data:', err));
-  };
+  useEffect(() => {
+    const fetchReport = () => {
+      fetch('http://127.0.0.1:8000/api/sensors/health/')
+        .then((res) => {
+          if (!res.ok) throw new Error('No data yet');
+          return res.json();
+        })
+        .then((json) => {
+          setReport(json);
+          setError(null);
+        })
+        .catch(() => setError('Cannot get the health report. Is the backend running?'));
+    };
 
-  fetchData(); // initial load
-  const interval = setInterval(fetchData, 5000); // poll every 5s
+    fetchReport();
+    const interval = setInterval(fetchReport, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  return () => clearInterval(interval); // cleanup on unmount
-}, []);
-
-  if (!data) {
-    return <p style={{ padding: '24px' }}>Loading sensor data...</p>;
+  if (!report) {
+    return <p style={{ padding: '24px' }}>{error || 'Checking your laptop...'}</p>;
   }
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', gap: '16px' }}>
-        <StatCard label="Temperature" value={data.temperature} unit="°C" />
-        <StatCard label="Humidity" value={data.humidity} unit="%" />
-        <StatusPanel status={data.status} />
+      <h2 style={{ marginTop: 0 }}>Laptop Health Check</h2>
+      {error && <p style={{ color: '#C62828' }}>{error}</p>}
+
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <StatusPanel status={report.overall} />
+        <StatCard label="Battery health" value={report.measurements.battery_health} unit="%" />
+        <StatCard label="Drive health" value={report.measurements.drive_health} unit="%" />
       </div>
-      <ActionLog entries={data.log} />
+
+      {report.findings.length === 0 ? (
+        <p style={{ marginTop: '16px' }}>No problems found. Your laptop looks healthy.</p>
+      ) : (
+        report.findings.map((finding) => (
+          <FindingCard key={finding.component} finding={finding} />
+        ))
+      )}
     </div>
   );
 }
