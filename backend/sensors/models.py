@@ -13,3 +13,16 @@ class SensorReading(models.Model):
 
     def __str__(self):
         return f"{self.timestamp}: {self.temperature}°C, {self.humidity}%, {self.status}"
+    
+class HealthReading(models.Model):
+    battery_health = models.FloatField()   # % of original capacity
+    drive_health = models.FloatField()     # % of drive life remaining
+    licence_valid = models.BooleanField(default=True)
+    suspected_malware = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"   
