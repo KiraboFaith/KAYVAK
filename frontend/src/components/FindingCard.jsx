@@ -1,37 +1,60 @@
-import { STATUS_STYLES } from '../statusStyles';
+import { STATUS } from '../statusStyles';
+import { getCareTips } from '../careTips';
 
-function FindingCard({ finding }) {
-  const style = STATUS_STYLES[finding.status] || { background: '#777777', color: '#ffffff' };
+const ICONS = {
+  Battery: '🔋',
+  'Storage drive': '💾',
+  'Windows licence': '🔑',
+  Security: '🛡️',
+};
+
+function FindingCard({ finding, index }) {
+  const tips = getCareTips(finding.component);
 
   return (
-    <div
-      style={{
-        border: '1px solid #ccc',
-        borderLeft: `8px solid ${style.background}`,
-        borderRadius: '8px',
-        padding: '16px',
-        marginTop: '16px',
-        maxWidth: '600px',
-      }}
+    <article
+      className="card finding"
+      data-status={finding.status}
+      style={{ animationDelay: `${index * 120}ms` }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <strong style={{ fontSize: '18px' }}>{finding.component}</strong>
-        <span style={{ padding: '2px 10px', borderRadius: '12px', fontSize: '13px', fontWeight: 'bold', ...style }}>
-          {finding.status}
+      <div className="finding-head">
+        <span className="finding-icon" aria-hidden="true">
+          {ICONS[finding.component] || '⚙️'}
         </span>
-        <span style={{ fontSize: '13px', color: '#888' }}>
-          {finding.type === 'hardware' ? 'Hardware problem' : 'Software problem'}
+        <div className="finding-title">
+          <h3>{finding.component}</h3>
+          <span className="tag">
+            {finding.type === 'hardware' ? 'Hardware problem' : 'Software problem'}
+          </span>
+        </div>
+        <span className="chip" data-status={finding.status}>
+          <span aria-hidden="true">{STATUS[finding.status].icon}</span> {finding.status}
         </span>
       </div>
 
-      <p style={{ margin: '10px 0 6px 0' }}>{finding.explanation}</p>
-      <p style={{ margin: '0 0 6px 0' }}>
-        <strong>Proof:</strong> {finding.evidence}
-      </p>
-      <p style={{ margin: 0 }}>
-        <strong>What to do:</strong> {finding.advice}
-      </p>
-    </div>
+      <p className="finding-explain">{finding.explanation}</p>
+
+      <div className="proof">
+        <span className="proof-label">Proof</span>
+        <span className="proof-text">{finding.evidence}</span>
+      </div>
+
+      <div className="todo">
+        <span className="todo-label">What to do</span>
+        <p>{finding.advice}</p>
+      </div>
+
+      {tips.length > 0 && (
+        <details className="care">
+          <summary>Care tips</summary>
+          <ul>
+            {tips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </article>
   );
 }
 
