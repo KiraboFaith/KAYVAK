@@ -1,26 +1,26 @@
 /* ---------- Colours and basics ---------- */
 :root {
-  --bg: #070b14;
-  --panel: rgba(255, 255, 255, 0.05);
-  --panel-border: rgba(255, 255, 255, 0.1);
-  --text: #b9c3d8;
-  --text-h: #f5f8ff;
-  --muted: #8591aa;
-  --accent: #6ea8ff;
+  --bg: #f4f8ff;
+  --panel: #ffffff;
+  --panel-border: #d6e2f5;
+  --text: #334155;
+  --text-h: #0b1f4b;
+  --muted: #5b6b86;
+  --accent: #1d4ed8;
 
-  --good: #2ee6a6;
-  --good-soft: rgba(46, 230, 166, 0.14);
-  --warn: #ffb938;
-  --warn-soft: rgba(255, 185, 56, 0.14);
-  --crit: #ff5d73;
-  --crit-soft: rgba(255, 93, 115, 0.14);
+  --good: #0a7f58;
+  --good-soft: rgba(10, 127, 88, 0.1);
+  --warn: #a85d00;
+  --warn-soft: rgba(168, 93, 0, 0.1);
+  --crit: #c81e4a;
+  --crit-soft: rgba(200, 30, 74, 0.1);
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   font: 16px/1.5 var(--sans);
   color: var(--text);
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -46,8 +46,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(1200px 600px at 10% -10%, #14224a 0%, transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, #1b1240 0%, transparent 55%), var(--bg);
+    radial-gradient(1000px 500px at 10% -10%, #dbeafe 0%, transparent 60%),
+    radial-gradient(800px 450px at 100% 0%, #e0e7ff 0%, transparent 55%), var(--bg);
+    
   background-attachment: fixed;
 }
 
@@ -104,12 +105,12 @@ h3 {
   animation: drift 18s ease-in-out infinite alternate;
 }
 .bg-orbs::before {
-  background: #3b6cff;
+  background: #60a5fa;
   top: -120px;
   left: -80px;
 }
 .bg-orbs::after {
-  background: #8a4dff;
+  background: #93c5fd;
   bottom: -160px;
   right: -100px;
   animation-delay: -9s;
