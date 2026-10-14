@@ -48,7 +48,6 @@ body {
   background:
     radial-gradient(1000px 500px at 10% -10%, #dbeafe 0%, transparent 60%),
     radial-gradient(800px 450px at 100% 0%, #e0e7ff 0%, transparent 55%), var(--bg);
-    
   background-attachment: fixed;
 }
 
@@ -121,7 +120,7 @@ h3 {
   border: 1px solid var(--panel-border);
   border-radius: 18px;
   padding: 20px;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(30, 64, 175, 0.08);
   animation: fade-up 0.6s ease both;
 }
 
@@ -186,8 +185,8 @@ h3 {
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: #061025;
-  background: linear-gradient(135deg, #8fc0ff, #b79bff);
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   border: 0;
   border-radius: 12px;
   padding: 9px 16px;
@@ -197,10 +196,10 @@ h3 {
 }
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(130, 150, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
 }
 .btn:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid #1d4ed8;
   outline-offset: 3px;
 }
 
@@ -226,7 +225,7 @@ h3 {
   height: 22px;
 }
 .heartbeat-ghost {
-  stroke: rgba(255, 255, 255, 0.12);
+  stroke: rgba(30, 64, 175, 0.15);
 }
 .heartbeat-line {
   stroke: var(--good);
@@ -318,7 +317,7 @@ h3 {
   stroke-width: 12;
 }
 .ring-track {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: rgba(30, 64, 175, 0.12);
 }
 .ring-bar {
   stroke: var(--status);
@@ -382,7 +381,7 @@ h3 {
 .meter-track {
   height: 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(30, 64, 175, 0.12);
   overflow: hidden;
 }
 .meter-fill {
@@ -426,7 +425,7 @@ h3 {
 }
 .finding:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 14px 34px rgba(30, 64, 175, 0.18);
 }
 .finding-head {
   display: flex;
@@ -462,7 +461,7 @@ h3 {
   gap: 2px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
+  background: #eff6ff;
   font-family: var(--mono);
   font-size: 14px;
 }
@@ -549,9 +548,9 @@ h3 {
   height: 30px;
   font-family: var(--mono);
   font-weight: 700;
-  color: #061025;
+  color: #ffffff;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8fc0ff, #b79bff);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
 }
 .mape-knowledge {
   display: flex;
@@ -565,7 +564,7 @@ h3 {
   background: linear-gradient(
     100deg,
     transparent 30%,
-    rgba(143, 192, 255, 0.12) 50%,
+    rgba(37, 99, 235, 0.1) 50%,
     transparent 70%
   );
   background-size: 250% 100%;
@@ -640,8 +639,8 @@ h3 {
   0%,
   22% {
     border-color: var(--accent);
-    background: rgba(110, 168, 255, 0.14);
-    box-shadow: 0 0 24px rgba(110, 168, 255, 0.3);
+    background: rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 24px rgba(37, 99, 235, 0.25);
   }
   30%,
   100% {
