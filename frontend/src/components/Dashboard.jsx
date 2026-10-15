@@ -48,7 +48,8 @@ function Dashboard() {
   }
 
   const info = STATUS[report.overall];
-  const passed = Math.max(0, TOTAL_CHECKS - report.findings.length);
+  const unchecked = report.unchecked || [];
+  const passed = Math.max(0, TOTAL_CHECKS - report.findings.length - unchecked.length);
 
   return (
     <div className="app">
@@ -76,7 +77,12 @@ function Dashboard() {
         </header>
 
         {error && <p className="banner">{error}</p>}
-
+        {unchecked.length > 0 && (
+          <p className="banner">
+            Not checked on this laptop: {unchecked.join(', ')}. Windows did not give us this
+            information, so we are not saying it is fine.
+          </p>
+        )}
         <section className="card hero" data-status={report.overall}>
           <HealthRing passed={passed} total={TOTAL_CHECKS} status={report.overall} />
           <div className="hero-text">
@@ -135,6 +141,7 @@ function Dashboard() {
           {report.source === 'simulated'
             ? 'Readings shown here are simulated.'
             : 'Readings come from this laptop.'}
+            {report.check_seconds != null && ` Last check took ${report.check_seconds} s.`}
         </footer>
       </div>
 

@@ -122,3 +122,49 @@ class HealthEndpointTests(TestCase):
     def test_source_defaults_to_simulated(self):
         HealthReading.objects.create(battery_health=90, drive_health=90)
         self.assertEqual(APIClient().get(self.url).data['source'], 'simulated')
+    
+    def test_unchecked_items_are_listed(self):
+        HealthReading.objects.create(
+            battery_health=90, drive_health=90, source='windows',
+            licence_checked=False, malware_checked=False, check_seconds=4.2,
+        )
+        data = APIClient().get(self.url).data
+        self.assertEqual(data['unchecked'], ['Windows licence', 'Security'])
+        self.assertEqual(data['check_seconds'], 4.2)
+
+    def test_nothing_unchecked_by_default(self):
+        HealthReading.objects.create(battery_health=90, drive_health=90)
+        self.assertEqual(APIClient().get(self.url).data['unchecked'], [])
+
+
+class CollectorTests(TestCase):
+    """Runs the collector with fake Windows answers, so it works on any computer."""
+
+    def run_once(self, licence=True, malware=False):
+        from unittest import mock
+        from sensors.management.commands import collect_windows as cw
+        command = cw.Command()
+        command.stdout = mock.Mock()
+        command.stderr = mock.Mock()
+        reads = {
+            'read_battery': mock.Mock(return_value=80.0),
+            'read_drive': mock.Mock(return_value=90.0),
+            'read_licence': licence if callable(licence) else mock.Mock(return_value=licence),
+            'read_malware': malware if callable(malware) else mock.Mock(return_value=malware),
+        }
+        with mock.patch.multiple(cw, **reads):
+            command.collect_once()
+        return HealthReading.objects.first()
+
+    def test_normal_check_is_saved_as_windows_and_timed(self):
+        reading = self.run_once()
+        self.assertEqual(reading.source, 'windows')
+        self.assertTrue(reading.licence_checked and reading.malware_checked)
+        self.assertIsNotNone(reading.check_seconds)
+
+    def test_unreadable_licence_is_marked_not_checked(self):
+        def broken():
+            raise RuntimeError('no access')
+        reading = self.run_once(licence=broken)
+        self.assertFalse(reading.licence_checked)
+        self.assertTrue(reading.malware_checked)

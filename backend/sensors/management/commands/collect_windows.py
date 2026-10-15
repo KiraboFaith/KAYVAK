@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand, CommandError
 
 from sensors.models import HealthReading
-
+CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
 # Drive: if Windows gives no wear percentage, we turn its health word into a number.
 # These three numbers are our own simple mapping, not a measurement.
 STATUS_TO_HEALTH = {'Healthy': 100.0, 'Warning': 60.0, 'Unhealthy': 20.0}
@@ -132,6 +132,7 @@ class Command(BaseCommand):
             time.sleep(options['interval'])
 
     def collect_once(self):
+        started = time.monotonic()
         try:
             battery = read_battery()
         except Exception as error:
@@ -143,16 +144,23 @@ class Command(BaseCommand):
             self.stderr.write(f'Drive not read, reading skipped: {error}')
             return
 
+        # Licence and security: if Windows will not tell us, we say so instead of guessing.
+        licence_valid, licence_checked = True, True
         try:
             licence_valid = read_licence()
         except Exception as error:
-            licence_valid = True
-            self.stdout.write(f'Licence could not be read, assuming valid: {error}')
+            licence_checked = False
+            self.stdout.write(f'Licence could not be read, marked as not checked: {error}')
+        suspected_malware, malware_checked = False, True
         try:
             suspected_malware = read_malware()
         except Exception as error:
-            suspected_malware = False
-            self.stdout.write(f'Windows Defender threats could not be read, assuming none: {error}')
+            malware_checked = False
+            self.stdout.write(f'Windows Defender could not be read, marked as not checked: {error}')
+
+        seconds = round(time.monotonic() - started, 1)
+        if seconds > CHECK_TIME_LIMIT:
+            self.stdout.write(f'Warning: the check took {seconds} s (target is {CHECK_TIME_LIMIT} s)')
 
         reading = HealthReading.objects.create(
             battery_health=battery,
@@ -160,5 +168,8 @@ class Command(BaseCommand):
             licence_valid=licence_valid,
             suspected_malware=suspected_malware,
             source='windows',
+            licence_checked=licence_checked,
+            malware_checked=malware_checked,
+            check_seconds=seconds,
         )
-        self.stdout.write(f'Inserted: {reading}')
+        self.stdout.write(f'Inserted: {reading} (took {seconds} s)')

@@ -8,7 +8,7 @@ function PrintReport({ report }) {
   const taken = new Date(report.timestamp).toLocaleString();
   const licenceStatus = statusOf(report, 'Windows licence');
   const securityStatus = statusOf(report, 'Security');
-
+  const unchecked = report.unchecked || [];
   const rows = [
     {
       check: 'Battery health',
@@ -22,13 +22,17 @@ function PrintReport({ report }) {
     },
     {
       check: 'Windows licence',
-      value: licenceStatus === 'Good' ? 'Check passed' : 'Check failed',
-      result: licenceStatus,
+      value: unchecked.includes('Windows licence')
+        ? 'Not checked'
+        : licenceStatus === 'Good' ? 'Check passed' : 'Check failed',
+      result: unchecked.includes('Windows licence') ? 'Not checked' : licenceStatus,
     },
     {
       check: 'Security (malware)',
-      value: securityStatus === 'Good' ? 'Nothing suspicious' : 'Suspicious activity',
-      result: securityStatus,
+      value: unchecked.includes('Security')
+        ? 'Not checked'
+        : securityStatus === 'Good' ? 'Nothing suspicious' : 'Suspicious activity',
+      result: unchecked.includes('Security') ? 'Not checked' : securityStatus,
     },
   ];
 

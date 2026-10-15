@@ -36,9 +36,18 @@ def health_report(request):
         'drive': trend([r.drive_health for r in recent], DRIVE_WARNING, DRIVE_CRITICAL),
     }
 
+        # Checks Windows would not answer: shown to the user, never silently counted as passed
+    unchecked = []
+    if not reading.licence_checked:
+        unchecked.append('Windows licence')
+    if not reading.malware_checked:
+        unchecked.append('Security')
+
     return Response({
         'timestamp': reading.timestamp,
         'source': reading.source,
+        'unchecked': unchecked,
+        'check_seconds': reading.check_seconds,
         'measurements': {
             'battery_health': reading.battery_health,
             'drive_health': reading.drive_health,
