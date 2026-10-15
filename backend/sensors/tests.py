@@ -1,8 +1,11 @@
 from types import SimpleNamespace
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from rest_framework.test import APIClient
 
 from .analysis import analyse, trend
+from .models import HealthReading
+
 
 
 def make_reading(battery=90, drive=90, licence=True, malware=False):
@@ -94,3 +97,20 @@ class TrendTests(SimpleTestCase):
         result = trend([70, 65, 55, 50, 45], 60, 40)
         self.assertEqual(result['checks_to_warning'], 0)
         self.assertGreater(result['checks_to_critical'], 0)
+class HealthEndpointTests(TestCase):
+    url = '/api/sensors/health/'
+
+    def test_404_when_no_readings(self):
+        self.assertEqual(APIClient().get(self.url).status_code, 404)
+
+    def test_report_includes_trends_once_enough_history_exists(self):
+        for battery in (88, 86, 84, 82, 80):
+            HealthReading.objects.create(battery_health=battery, drive_health=95)
+        data = APIClient().get(self.url).data
+        self.assertEqual(data['trends']['battery']['direction'], 'falling')
+        self.assertEqual(data['trends']['drive']['direction'], 'stable')
+
+    def test_trends_are_none_with_little_history(self):
+        HealthReading.objects.create(battery_health=90, drive_health=90)
+        data = APIClient().get(self.url).data
+        self.assertIsNone(data['trends']['battery'])        

@@ -1,7 +1,12 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import SensorReading, HealthReading
-from .analysis import analyse
+from .analysis import (
+    analyse, trend,
+    BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
+)
+
+TREND_WINDOW = 20  # how many recent readings the trend looks at
 
 
 @api_view(['GET'])
@@ -23,13 +28,20 @@ def health_report(request):
         return Response({'detail': 'No readings yet'}, status=404)
 
     report = analyse(reading)
+
+    # Knowledge: look back at recent readings (oldest first) to see where things are heading
+    recent = list(HealthReading.objects.all()[:TREND_WINDOW])[::-1]
+    trends = {
+        'battery': trend([r.battery_health for r in recent], BATTERY_WARNING, BATTERY_CRITICAL),
+        'drive': trend([r.drive_health for r in recent], DRIVE_WARNING, DRIVE_CRITICAL),
+    }
+
     return Response({
         'timestamp': reading.timestamp,
         'measurements': {
             'battery_health': reading.battery_health,
             'drive_health': reading.drive_health,
         },
+        'trends': trends,
         **report,
     })
-
-
