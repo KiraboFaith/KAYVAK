@@ -19,6 +19,7 @@ class HealthReading(models.Model):
     drive_health = models.FloatField()     # % of drive life remaining
     licence_valid = models.BooleanField(default=True)
     suspected_malware = models.BooleanField(default=False)
+    source = models.CharField(max_length=20, default='simulated')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
