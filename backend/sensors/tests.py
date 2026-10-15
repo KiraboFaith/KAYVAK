@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from django.test import SimpleTestCase
 
-from .analysis import analyse
+from .analysis import analyse, trend
 
 
 def make_reading(battery=90, drive=90, licence=True, malware=False):
@@ -68,3 +68,29 @@ class AnalyseTests(SimpleTestCase):
         for f in report['findings']:
             for key in ('explanation', 'evidence', 'advice', 'type'):
                 self.assertTrue(f[key])
+class TrendTests(SimpleTestCase):
+    def test_too_few_readings_gives_no_trend(self):
+        self.assertIsNone(trend([90, 89, 88], 60, 40))
+
+    def test_falling_battery_predicts_checks_to_limits(self):
+        # drops 2 per check, now at 80: 10 checks to reach 60, 20 to reach 40
+        result = trend([88, 86, 84, 82, 80], 60, 40)
+        self.assertEqual(result['direction'], 'falling')
+        self.assertEqual(result['change_per_check'], -2.0)
+        self.assertEqual(result['checks_to_warning'], 10)
+        self.assertEqual(result['checks_to_critical'], 20)
+
+    def test_flat_readings_are_stable_with_no_prediction(self):
+        result = trend([90, 90, 90, 90, 90], 60, 40)
+        self.assertEqual(result['direction'], 'stable')
+        self.assertIsNone(result['checks_to_warning'])
+
+    def test_rising_readings_never_predict_failure(self):
+        result = trend([70, 75, 80, 85, 90], 60, 40)
+        self.assertEqual(result['direction'], 'rising')
+        self.assertIsNone(result['checks_to_critical'])
+
+    def test_already_below_limit_is_zero(self):
+        result = trend([70, 65, 55, 50, 45], 60, 40)
+        self.assertEqual(result['checks_to_warning'], 0)
+        self.assertGreater(result['checks_to_critical'], 0)
