@@ -1,8 +1,11 @@
+import ConsentGate from './components/ConsentGate';
 import Dashboard from './components/Dashboard';
 
 function App() {
   return (
-    <Dashboard />
+    <ConsentGate>
+      <Dashboard />
+    </ConsentGate>
   );
 }
 

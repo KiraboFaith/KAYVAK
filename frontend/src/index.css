@@ -761,3 +761,15 @@ h3 {
   color: #b45309;
   font-weight: 600;
 }
+
+/* ---------- Consent screen (NFR-02) ---------- */
+.consent {
+  max-width: 480px;
+  padding: 24px;
+  text-align: left;
+}
+.consent ul {
+  margin: 12px 0 20px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
