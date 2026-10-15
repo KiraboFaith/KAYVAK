@@ -114,3 +114,11 @@ class HealthEndpointTests(TestCase):
         HealthReading.objects.create(battery_health=90, drive_health=90)
         data = APIClient().get(self.url).data
         self.assertIsNone(data['trends']['battery'])        
+    
+    def test_report_says_where_the_reading_came_from(self):
+        HealthReading.objects.create(battery_health=90, drive_health=90, source='windows')
+        self.assertEqual(APIClient().get(self.url).data['source'], 'windows')
+
+    def test_source_defaults_to_simulated(self):
+        HealthReading.objects.create(battery_health=90, drive_health=90)
+        self.assertEqual(APIClient().get(self.url).data['source'], 'simulated')

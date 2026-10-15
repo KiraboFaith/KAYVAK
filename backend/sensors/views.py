@@ -38,6 +38,7 @@ def health_report(request):
 
     return Response({
         'timestamp': reading.timestamp,
+        'source': reading.source,
         'measurements': {
             'battery_health': reading.battery_health,
             'drive_health': reading.drive_health,
