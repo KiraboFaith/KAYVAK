@@ -1,6 +1,20 @@
 import { STATUS } from '../statusStyles';
 
-function MeterBar({ label, caption, value, status }) {
+// Turns the backend trend into one plain sentence for a non-technical reader.
+function trendText(trend) {
+  if (!trend) return 'Collecting readings to spot a trend...';
+  if (trend.checks_to_critical === 0) return 'Already in the critical range.';
+  if (trend.direction === 'falling') {
+    const next =
+      trend.checks_to_warning === 0
+        ? `about ${trend.checks_to_critical} checks from critical`
+        : `about ${trend.checks_to_warning} checks from a warning`;
+    return `Falling ${Math.abs(trend.change_per_check)} points per check, ${next}.`;
+  }
+  return trend.direction === 'rising' ? 'Improving.' : 'Holding steady.';
+}
+
+function MeterBar({ label, caption, value, status, trend }) {
   const percent = Math.max(0, Math.min(100, value));
 
   return (
@@ -26,6 +40,9 @@ function MeterBar({ label, caption, value, status }) {
         <div className="meter-fill" style={{ width: `${percent}%` }} />
       </div>
       <span className="meter-caption">{caption}</span>
+      <span className="meter-trend" data-direction={trend ? trend.direction : 'none'}>
+        {trendText(trend)}
+      </span>
     </div>
   );
 }

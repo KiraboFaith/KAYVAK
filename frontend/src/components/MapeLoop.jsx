@@ -25,7 +25,7 @@ function MapeLoop() {
         <span className="mape-letter">K</span>
         <div>
           <strong>Knowledge</strong>
-          <span> Remembers the safe limits and every past reading.</span>
+          <span> Keeps every past reading and uses them to predict when a part will fail.</span>
         </div>
       </div>
     </section>

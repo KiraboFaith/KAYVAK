@@ -38,8 +38,11 @@ function PrintReport({ report }) {
       <p className="report-meta">
         Printed: {printed} | Reading taken: {taken}
       </p>
-      <p className="report-meta">Note: this version uses simulated demo readings.</p>
-
+            <p className="report-meta">
+        {report.source === 'simulated'
+          ? 'Note: this reading is simulated demo data.'
+          : 'Reading taken from this laptop by the KAYVAK Windows collector.'}
+      </p>
       <h2>Overall result: {report.overall}</h2>
 
       <table>

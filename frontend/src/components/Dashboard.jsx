@@ -66,7 +66,8 @@ function Dashboard() {
           <div className="topbar-actions">
             <span className="live">
               <i className="dot" />
-              Demo data · {updatedAt ? updatedAt.toLocaleTimeString() : ''}
+              {report.source === 'simulated' ? 'Demo data' : 'Live readings'} ·{' '}
+              {updatedAt ? updatedAt.toLocaleTimeString() : ''}
             </span>
             <button className="btn" onClick={() => window.print()}>
               🖨 Print report
@@ -130,8 +131,10 @@ function Dashboard() {
         <MapeLoop />
 
         <footer className="footer">
-          KAYVAK gives advice only. It does not replace a technician. Readings in this version are
-          simulated.
+          KAYVAK gives advice only. It does not replace a technician.{' '}
+          {report.source === 'simulated'
+            ? 'Readings shown here are simulated.'
+            : 'Readings come from this laptop.'}
         </footer>
       </div>
 
