@@ -6,6 +6,7 @@ import MeterBar from './MeterBar';
 import FindingCard from './FindingCard';
 import MapeLoop from './MapeLoop';
 import PrintReport from './PrintReport';
+import SettingsPanel from './SettingsPanel';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
 const TOTAL_CHECKS = 4; // battery, drive, licence, security
@@ -14,6 +15,7 @@ function Dashboard() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const fetchReport = () => {
@@ -70,12 +72,16 @@ function Dashboard() {
               {report.source === 'simulated' ? 'Demo data' : 'Live readings'} ·{' '}
               {updatedAt ? updatedAt.toLocaleTimeString() : ''}
             </span>
+            <button className="btn btn-quiet" onClick={() => setShowSettings((open) => !open)}>
+              ⚙ Settings
+            </button>
             <button className="btn" onClick={() => window.print()}>
               🖨 Print report
             </button>
           </div>
         </header>
 
+        {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
         {error && <p className="banner">{error}</p>}
         {unchecked.length > 0 && (
           <p className="banner">

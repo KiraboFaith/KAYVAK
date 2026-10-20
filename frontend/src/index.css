@@ -773,3 +773,37 @@ h3 {
   padding-left: 20px;
   line-height: 1.6;
 }
+/* ---------- Notifications: first-open question and Settings ---------- */
+.choice-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.btn-quiet {
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--panel-border);
+}
+.btn-quiet:hover {
+  box-shadow: none;
+  background: var(--panel);
+}
+.settings {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.settings-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.settings-row input {
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+}
+.settings-row small {
+  display: block;
+  color: var(--muted);
+}
