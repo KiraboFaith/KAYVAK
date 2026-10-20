@@ -29,4 +29,18 @@ class HealthReading(models.Model):
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"   
+        return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"  
+    
+class NotificationSetting(models.Model):
+    """The owner's notification choice. There is only ever one row (pk=1)."""
+    enabled = models.BooleanField(default=False)  # True = send urgent alerts
+    asked = models.BooleanField(default=False)    # True once the owner has answered the first-open question
+    updated = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        setting, _ = cls.objects.get_or_create(pk=1)
+        return setting
+
+    def __str__(self):
+        return f"notifications {'on' if self.enabled else 'off'}" 

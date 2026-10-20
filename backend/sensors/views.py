@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import SensorReading, HealthReading
+from .models import SensorReading, HealthReading, NotificationSetting
 from .analysis import (
     analyse, trend,
     BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
@@ -55,3 +55,15 @@ def health_report(request):
         'trends': trends,
         **report,
     })
+@api_view(['GET', 'POST'])
+def notification_settings(request):
+    """GET: what the owner chose. POST {"enabled": true/false}: save the choice."""
+    setting = NotificationSetting.current()
+    if request.method == 'POST':
+        enabled = request.data.get('enabled')
+        if not isinstance(enabled, bool):
+            return Response({'detail': '"enabled" must be true or false'}, status=400)
+        setting.enabled = enabled
+        setting.asked = True
+        setting.save()
+    return Response({'enabled': setting.enabled, 'asked': setting.asked})    

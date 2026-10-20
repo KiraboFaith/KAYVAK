@@ -168,3 +168,31 @@ class CollectorTests(TestCase):
         reading = self.run_once(licence=broken)
         self.assertFalse(reading.licence_checked)
         self.assertTrue(reading.malware_checked)
+        
+class NotificationSettingTests(TestCase):
+    url = '/api/sensors/notifications/'
+
+    def test_default_is_off_and_not_asked(self):
+        data = APIClient().get(self.url).data
+        self.assertEqual(data, {'enabled': False, 'asked': False})
+
+    def test_owner_can_turn_it_on_and_it_is_remembered(self):
+        client = APIClient()
+        response = client.post(self.url, {'enabled': True}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(client.get(self.url).data, {'enabled': True, 'asked': True})
+
+    def test_saying_no_counts_as_asked(self):
+        client = APIClient()
+        client.post(self.url, {'enabled': False}, format='json')
+        self.assertEqual(client.get(self.url).data, {'enabled': False, 'asked': True})
+
+    def test_owner_can_turn_it_on_later(self):
+        client = APIClient()
+        client.post(self.url, {'enabled': False}, format='json')
+        client.post(self.url, {'enabled': True}, format='json')
+        self.assertTrue(client.get(self.url).data['enabled'])
+
+    def test_bad_value_is_rejected(self):
+        response = APIClient().post(self.url, {'enabled': 'yes'}, format='json')
+        self.assertEqual(response.status_code, 400)
