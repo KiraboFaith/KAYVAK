@@ -8,7 +8,9 @@ import xml.etree.ElementTree as ET
 
 from django.core.management.base import BaseCommand, CommandError
 
-from sensors.models import HealthReading
+from sensors.analysis import analyse
+from sensors.models import HealthReading, NotificationSetting
+from sensors.notify import TOAST_TITLE, decide_alert, show_windows_toast, toast_body, urgent_findings
 CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
 # Drive: if Windows gives no wear percentage, we turn its health word into a number.
 # These three numbers are our own simple mapping, not a measurement.
@@ -117,7 +119,10 @@ def read_malware():
 
 class Command(BaseCommand):
     help = 'Reads real health values from this Windows laptop and saves them'
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.alerted = set()  # urgent problems the owner has already been told about
+    
     def add_arguments(self, parser):
         parser.add_argument('--once', action='store_true', help='take one reading and stop')
         parser.add_argument('--interval', type=int, default=60, help='seconds between readings')
@@ -173,3 +178,17 @@ class Command(BaseCommand):
             check_seconds=seconds,
         )
         self.stdout.write(f'Inserted: {reading} (took {seconds} s)')
+        self.alert_if_urgent(reading)
+
+    def alert_if_urgent(self, reading):
+        """Shows a Windows pop-up for a new urgent problem, if the owner turned notifications on."""
+        urgent = urgent_findings(analyse(reading))
+        enabled = NotificationSetting.current().enabled
+        alert_now, self.alerted = decide_alert(enabled, {f['component'] for f in urgent}, self.alerted)
+        if not alert_now:
+            return
+        try:
+            show_windows_toast(TOAST_TITLE, toast_body(urgent))
+            self.stdout.write('Urgent alert shown.')
+        except Exception as error:
+            self.stderr.write(f'Could not show the alert: {error}')

@@ -196,3 +196,87 @@ class NotificationSettingTests(TestCase):
     def test_bad_value_is_rejected(self):
         response = APIClient().post(self.url, {'enabled': 'yes'}, format='json')
         self.assertEqual(response.status_code, 400)
+        
+class AlertDecisionTests(SimpleTestCase):
+    def test_off_never_alerts(self):
+        from .notify import decide_alert
+        self.assertEqual(decide_alert(False, {'Battery'}, set()), (False, set()))
+
+    def test_new_urgent_problem_alerts_once(self):
+        from .notify import decide_alert
+        alert, seen = decide_alert(True, {'Battery'}, set())
+        self.assertTrue(alert)
+        self.assertFalse(decide_alert(True, {'Battery'}, seen)[0])
+
+    def test_second_new_problem_alerts_again(self):
+        from .notify import decide_alert
+        self.assertTrue(decide_alert(True, {'Battery', 'Security'}, {'Battery'})[0])
+
+    def test_problem_that_goes_away_and_returns_alerts_again(self):
+        from .notify import decide_alert
+        _, seen = decide_alert(True, {'Battery'}, set())
+        _, seen = decide_alert(True, set(), seen)
+        self.assertTrue(decide_alert(True, {'Battery'}, seen)[0])
+
+    def test_turning_on_later_alerts_for_a_problem_already_there(self):
+        from .notify import decide_alert
+        _, seen = decide_alert(False, {'Battery'}, set())
+        self.assertTrue(decide_alert(True, {'Battery'}, seen)[0])
+
+    def test_only_critical_is_urgent(self):
+        from .notify import urgent_findings
+        report = analyse(make_reading(battery=55, drive=30))  # battery Warning, drive Critical
+        self.assertEqual([f['component'] for f in urgent_findings(report)], ['Storage drive'])
+
+
+class CollectorAlertTests(TestCase):
+    def setUp(self):
+        from sensors.management.commands import collect_windows as cw
+        self.command = cw.Command()
+
+    def run_check(self, battery=80.0, enabled=True):
+        from unittest import mock
+        from sensors.management.commands import collect_windows as cw
+        from .models import NotificationSetting
+        setting = NotificationSetting.current()
+        setting.enabled = enabled
+        setting.save()
+        self.command.stdout, self.command.stderr = mock.Mock(), mock.Mock()
+        reads = {
+            'read_battery': mock.Mock(return_value=battery),
+            'read_drive': mock.Mock(return_value=90.0),
+            'read_licence': mock.Mock(return_value=True),
+            'read_malware': mock.Mock(return_value=False),
+        }
+        with mock.patch.multiple(cw, **reads), mock.patch.object(cw, 'show_windows_toast') as toast:
+            self.command.collect_once()
+        return toast
+
+    def test_healthy_laptop_shows_no_alert(self):
+        self.assertFalse(self.run_check(battery=80).called)
+
+    def test_critical_battery_shows_one_alert_and_not_a_repeat(self):
+        self.assertEqual(self.run_check(battery=30).call_count, 1)
+        self.assertFalse(self.run_check(battery=30).called)
+
+    def test_alert_text_has_explanation_and_advice(self):
+        title, body = self.run_check(battery=30).call_args[0]
+        self.assertIn('KAYVAK', title)
+        self.assertIn('Battery', body)
+        self.assertIn('technician', body)
+
+    def test_notifications_off_shows_nothing(self):
+        self.assertFalse(self.run_check(battery=30, enabled=False).called)
+
+    def test_a_failing_popup_does_not_stop_the_check(self):
+        from unittest import mock
+        from sensors.management.commands import collect_windows as cw
+        from .models import NotificationSetting
+        NotificationSetting.objects.update_or_create(pk=1, defaults={'enabled': True})
+        self.command.stdout, self.command.stderr = mock.Mock(), mock.Mock()
+        reads = {'read_battery': mock.Mock(return_value=30.0), 'read_drive': mock.Mock(return_value=90.0),
+                 'read_licence': mock.Mock(return_value=True), 'read_malware': mock.Mock(return_value=False)}
+        with mock.patch.object(cw, 'show_windows_toast', side_effect=RuntimeError('blocked')), \
+             mock.patch.multiple(cw, **reads):
+            self.command.collect_once()
+        self.assertEqual(HealthReading.objects.count(), 1)        
