@@ -10,8 +10,10 @@ and the printed report always say which one the reading came from. This version 
 Backend (in `backend`, two terminals). Terminal 1:
 
 ```
+pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
+
 ```
 
 Terminal 2, pick ONE data source:
