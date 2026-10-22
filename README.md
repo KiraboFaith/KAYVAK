@@ -16,6 +16,11 @@ python manage.py runserver
 
 ```
 
+Frontend (in `frontend`, a third terminal):
+
+    npm install
+    npm run dev
+
 Terminal 2, pick ONE data source:
 
 ```
