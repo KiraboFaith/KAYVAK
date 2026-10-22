@@ -42,6 +42,13 @@ python manage.py test sensors
 - Plan: the advice for each problem is chosen there too.
 - Execute: the dashboard shows the result and a printable report. Nothing is repaired.
 - Knowledge: the limits and every past reading are kept in the database.
+
+## Notifications
+
+Critical problems show a Windows pop-up (written by `collect_windows`), so the owner
+does not have to open the app. The app asks on first open, and the choice can be
+changed later in Settings. Nothing leaves the laptop.
+
 ## Requirements traceability
 
 Requirement numbers come from the Requirements Elicitation Report.
