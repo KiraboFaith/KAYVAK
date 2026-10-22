@@ -21,6 +21,7 @@ def sensor_data(request):
     }
     return Response(data)
 
+
 @api_view(['GET'])
 def health_report(request):
     reading = HealthReading.objects.first()  # newest first
@@ -36,7 +37,7 @@ def health_report(request):
         'drive': trend([r.drive_health for r in recent], DRIVE_WARNING, DRIVE_CRITICAL),
     }
 
-        # Checks Windows would not answer: shown to the user, never silently counted as passed
+    # Checks Windows would not answer: shown to the user, never silently counted as passed
     unchecked = []
     if not reading.licence_checked:
         unchecked.append('Windows licence')
@@ -55,6 +56,8 @@ def health_report(request):
         'trends': trends,
         **report,
     })
+
+
 @api_view(['GET', 'POST'])
 def notification_settings(request):
     """GET: what the owner chose. POST {"enabled": true/false}: save the choice."""
@@ -66,4 +69,4 @@ def notification_settings(request):
         setting.enabled = enabled
         setting.asked = True
         setting.save()
-    return Response({'enabled': setting.enabled, 'asked': setting.asked})    
+    return Response({'enabled': setting.enabled, 'asked': setting.asked})

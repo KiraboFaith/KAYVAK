@@ -13,7 +13,8 @@ class SensorReading(models.Model):
 
     def __str__(self):
         return f"{self.timestamp}: {self.temperature}°C, {self.humidity}%, {self.status}"
-    
+
+
 class HealthReading(models.Model):
     battery_health = models.FloatField()   # % of original capacity
     drive_health = models.FloatField()     # % of drive life remaining
@@ -29,8 +30,9 @@ class HealthReading(models.Model):
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"  
-    
+        return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"
+
+
 class NotificationSetting(models.Model):
     """The owner's notification choice. There is only ever one row (pk=1)."""
     enabled = models.BooleanField(default=False)  # True = send urgent alerts
@@ -43,4 +45,4 @@ class NotificationSetting(models.Model):
         return setting
 
     def __str__(self):
-        return f"notifications {'on' if self.enabled else 'off'}" 
+        return f"notifications {'on' if self.enabled else 'off'}"
