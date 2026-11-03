@@ -31,6 +31,28 @@ class HealthReading(models.Model):
 
     def __str__(self):
         return f"{self.timestamp}: battery {self.battery_health}%, drive {self.drive_health}%"
+    
+class DiskReading(models.Model):
+    """The raw numbers one physical disk gave during one check (for early-warning trends)."""
+    reading = models.ForeignKey(HealthReading, on_delete=models.CASCADE, related_name='disks')
+    device_id = models.IntegerField()                        # Windows disk number (0, 1, ...)
+    name = models.CharField(max_length=100)                  # e.g. "TOSHIBA MQ04ABF100"
+    media_type = models.CharField(max_length=20, blank=True) # HDD, SSD or Unspecified
+    health_status = models.CharField(max_length=20, blank=True)
+    # Every number below is empty (None) when Windows does not report it for that disk.
+    temperature = models.FloatField(null=True, blank=True)   # degrees C
+    power_on_hours = models.IntegerField(null=True, blank=True)
+    load_unload_cycles = models.IntegerField(null=True, blank=True)  # hard drives only
+    read_errors_total = models.IntegerField(null=True, blank=True)
+    read_errors_uncorrected = models.IntegerField(null=True, blank=True)
+    wear = models.FloatField(null=True, blank=True)          # % used, as Windows reports it
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.timestamp}: disk {self.device_id} ({self.name})"
 
 
 class NotificationSetting(models.Model):

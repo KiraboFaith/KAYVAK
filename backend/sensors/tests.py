@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
 from .analysis import analyse, trend
-from .models import HealthReading
+from .models import DiskReading, HealthReading
 
 
 
@@ -151,6 +151,7 @@ class CollectorTests(TestCase):
             'read_drive': mock.Mock(return_value=90.0),
             'read_licence': licence if callable(licence) else mock.Mock(return_value=licence),
             'read_malware': malware if callable(malware) else mock.Mock(return_value=malware),
+            'read_disk_details': mock.Mock(return_value=[]),
         }
         with mock.patch.multiple(cw, **reads):
             command.collect_once()
@@ -168,6 +169,53 @@ class CollectorTests(TestCase):
         reading = self.run_once(licence=broken)
         self.assertFalse(reading.licence_checked)
         self.assertTrue(reading.malware_checked)
+        
+class DiskDetailTests(TestCase):
+    SAMPLE = (
+        '[{"DeviceId":0,"Name":"TOSHIBA MQ04ABF100","MediaType":"HDD","Health":"Healthy",'
+        '"Temperature":34,"PowerOnHours":4389,"LoadUnload":34980,"ReadErrors":0,'
+        '"ReadUncorrected":null,"Wear":0},'
+        '{"DeviceId":1,"Name":"BC511 NVMe SK hynix 256GB","MediaType":"SSD","Health":"Healthy",'
+        '"Temperature":46,"PowerOnHours":null,"LoadUnload":null,"ReadErrors":null,'
+        '"ReadUncorrected":null,"Wear":0}]'
+    )
+
+    def test_json_is_turned_into_one_dictionary_per_disk(self):
+        from sensors.management.commands.collect_windows import disk_details_from_json
+        disks = disk_details_from_json(self.SAMPLE)
+        self.assertEqual(len(disks), 2)
+        self.assertEqual(disks[0]['power_on_hours'], 4389)
+        self.assertEqual(disks[0]['load_unload_cycles'], 34980)
+        self.assertIsNone(disks[1]['power_on_hours'])   # not reported stays None
+
+    def test_a_single_disk_is_handled(self):
+        from sensors.management.commands.collect_windows import disk_details_from_json
+        one = '{"DeviceId":0,"Name":"X","MediaType":"SSD","Health":"Healthy","Temperature":30}'
+        self.assertEqual(len(disk_details_from_json(one)), 1)
+
+    def test_collector_saves_disks_and_survives_a_disk_failure(self):
+        from unittest import mock
+        from sensors.management.commands import collect_windows as cw
+        command = cw.Command()
+        command.stdout = mock.Mock()
+        command.stderr = mock.Mock()
+        reads = {
+            'read_battery': mock.Mock(return_value=80.0),
+            'read_drive': mock.Mock(return_value=90.0),
+            'read_licence': mock.Mock(return_value=True),
+            'read_malware': mock.Mock(return_value=False),
+            'read_disk_details': mock.Mock(return_value=cw.disk_details_from_json(self.SAMPLE)),
+        }
+        with mock.patch.multiple(cw, **reads):
+            command.collect_once()
+        self.assertEqual(DiskReading.objects.count(), 2)
+        self.assertEqual(DiskReading.objects.get(device_id=0).reading, HealthReading.objects.first())
+
+        reads['read_disk_details'] = mock.Mock(side_effect=RuntimeError('no access'))
+        with mock.patch.multiple(cw, **reads):
+            command.collect_once()
+        self.assertEqual(HealthReading.objects.count(), 2)   # main reading still saved
+        self.assertEqual(DiskReading.objects.count(), 2)     # no new disk rows
         
 class NotificationSettingTests(TestCase):
     url = '/api/sensors/notifications/'

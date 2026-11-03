@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand, CommandError
 
 from sensors.analysis import analyse
-from sensors.models import HealthReading, NotificationSetting
+from sensors.models import DiskReading, HealthReading, NotificationSetting
 from sensors.notify import TOAST_TITLE, decide_alert, show_windows_toast, toast_body, urgent_findings
 CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
 # Drive: if Windows gives no wear percentage, we turn its health word into a number.
@@ -22,6 +22,21 @@ DRIVE_SCRIPT = (
     "try { $wear = ($_ | Get-StorageReliabilityCounter -ErrorAction Stop).Wear } catch {} ; "
     "[pscustomobject]@{ Name = $_.FriendlyName; Health = [string]$_.HealthStatus; Wear = $wear } }; "
     "ConvertTo-Json -InputObject @($disks) -Compress"
+)
+
+# Early-warning numbers for every disk. Needs an administrator terminal, otherwise the
+# numbers come back empty (null) and we save the disk with empty numbers.
+DISK_DETAIL_SCRIPT = (
+    "$out = foreach ($d in Get-PhysicalDisk) { "
+    "$rc = $null; "
+    "try { $rc = $d | Get-StorageReliabilityCounter -ErrorAction Stop } catch {} ; "
+    "[pscustomobject]@{ "
+    "DeviceId = [int]$d.DeviceId; Name = $d.FriendlyName; "
+    "MediaType = [string]$d.MediaType; Health = [string]$d.HealthStatus; "
+    "Temperature = $rc.Temperature; PowerOnHours = $rc.PowerOnHours; "
+    "LoadUnload = $rc.LoadUnloadCycleCount; ReadErrors = $rc.ReadErrorsTotal; "
+    "ReadUncorrected = $rc.ReadErrorsUncorrected; Wear = $rc.Wear } }; "
+    "ConvertTo-Json -InputObject @($out) -Compress"
 )
 
 LICENCE_SCRIPT = (
@@ -105,6 +120,30 @@ def drive_percent_from_json(text):
 def read_drive():
     return drive_percent_from_json(run_powershell(DRIVE_SCRIPT))
 
+def disk_details_from_json(text):
+    """Turns PowerShell's JSON into one dictionary per disk (missing numbers stay None)."""
+    disks = json.loads(text)
+    if isinstance(disks, dict):
+        disks = [disks]
+    return [
+        {
+            'device_id': int(disk['DeviceId']),
+            'name': disk.get('Name') or 'Unknown disk',
+            'media_type': disk.get('MediaType') or '',
+            'health_status': disk.get('Health') or '',
+            'temperature': disk.get('Temperature'),
+            'power_on_hours': disk.get('PowerOnHours'),
+            'load_unload_cycles': disk.get('LoadUnload'),
+            'read_errors_total': disk.get('ReadErrors'),
+            'read_errors_uncorrected': disk.get('ReadUncorrected'),
+            'wear': disk.get('Wear'),
+        }
+        for disk in disks
+    ]
+
+
+def read_disk_details():
+    return disk_details_from_json(run_powershell(DISK_DETAIL_SCRIPT))
 
 def read_licence():
     out = run_powershell(LICENCE_SCRIPT)
@@ -178,7 +217,16 @@ class Command(BaseCommand):
             check_seconds=seconds,
         )
         self.stdout.write(f'Inserted: {reading} (took {seconds} s)')
+        self.save_disk_details(reading)
         self.alert_if_urgent(reading)
+        
+    def save_disk_details(self, reading):
+        """Saves the per-disk numbers. If this fails, the main reading is already saved."""
+        try:
+            for disk in read_disk_details():
+                DiskReading.objects.create(reading=reading, **disk)
+        except Exception as error:
+            self.stderr.write(f'Disk details not saved: {error}')    
 
     def alert_if_urgent(self, reading):
         """Shows a Windows pop-up for a new urgent problem, if the owner turned notifications on."""
