@@ -15,6 +15,22 @@ function trendText(trend) {
 }
 
 function MeterBar({ label, caption, value, status, trend }) {
+    // null = Windows could not measure this. We say so instead of showing a made-up number.
+  if (value === null || value === undefined) {
+    return (
+      <div className="card meter">
+        <div className="meter-top">
+          <span className="meter-label">{label}</span>
+        </div>
+        <div className="meter-value">
+          <small>Not measured</small>
+        </div>
+        <span className="meter-caption">
+          Windows does not report this for your drive, so we are not guessing.
+        </span>
+      </div>
+    );
+  }
   const percent = Math.max(0, Math.min(100, value));
 
   return (

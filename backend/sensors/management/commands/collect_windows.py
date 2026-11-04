@@ -12,15 +12,17 @@ from sensors.analysis import analyse
 from sensors.models import DiskReading, HealthReading, NotificationSetting
 from sensors.notify import TOAST_TITLE, decide_alert, show_windows_toast, toast_body, urgent_findings
 CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
-# Drive: if Windows gives no wear percentage, we turn its health word into a number.
-# These three numbers are our own simple mapping, not a measurement.
-STATUS_TO_HEALTH = {'Healthy': 100.0, 'Warning': 60.0, 'Unhealthy': 20.0}
+# Drive: a health WORD from Windows is not a measurement. "Healthy" alone tells us nothing
+# about how much life is left, so it gives no number. "Warning" and "Unhealthy" are real
+# signals, so they are mapped to these two numbers (our own simple mapping).
+BAD_STATUS_TO_HEALTH = {'Warning': 60.0, 'Unhealthy': 20.0}
 
 DRIVE_SCRIPT = (
     "$disks = Get-PhysicalDisk | ForEach-Object { "
     "$wear = $null; "
     "try { $wear = ($_ | Get-StorageReliabilityCounter -ErrorAction Stop).Wear } catch {} ; "
-    "[pscustomobject]@{ Name = $_.FriendlyName; Health = [string]$_.HealthStatus; Wear = $wear } }; "
+    "[pscustomobject]@{ Name = $_.FriendlyName; MediaType = [string]$_.MediaType; "
+    "Health = [string]$_.HealthStatus; Wear = $wear } }; "
     "ConvertTo-Json -InputObject @($disks) -Compress"
 )
 
@@ -99,23 +101,27 @@ def read_battery():
 
 
 def drive_percent_from_json(text):
-    """Worst drive wins. Uses wear when Windows gives it, otherwise the health word."""
+    """Worst measured drive wins. Returns None when Windows gave nothing we can trust.
+
+    - Wear is used only for non-HDD disks. Spinning hard drives report Wear 0 even though
+      they cannot measure it, so 0 there means "not reported", not "perfect".
+    - "Warning" / "Unhealthy" from Windows are real signals and are used on any disk.
+    - "Healthy" alone gives no number (None = not measured).
+    """
     disks = json.loads(text)
     if isinstance(disks, dict):
         disks = [disks]
+    if not disks:
+        raise RuntimeError('Windows listed no drives')
     values = []
     for disk in disks:
-        candidates = []
-        if disk.get('Wear') is not None:
-            candidates.append(100.0 - float(disk['Wear']))
-        if disk.get('Health') in STATUS_TO_HEALTH:
-            candidates.append(STATUS_TO_HEALTH[disk['Health']])
-        if candidates:
-            values.append(min(candidates))
+        if disk.get('Wear') is not None and disk.get('MediaType') != 'HDD':
+            values.append(100.0 - float(disk['Wear']))
+        if disk.get('Health') in BAD_STATUS_TO_HEALTH:
+            values.append(BAD_STATUS_TO_HEALTH[disk['Health']])
     if not values:
-        raise RuntimeError('Windows gave no drive health')
+        return None
     return round(max(0.0, min(100.0, min(values))), 1)
-
 
 def read_drive():
     return drive_percent_from_json(run_powershell(DRIVE_SCRIPT))

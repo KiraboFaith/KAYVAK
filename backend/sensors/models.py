@@ -17,7 +17,7 @@ class SensorReading(models.Model):
 
 class HealthReading(models.Model):
     battery_health = models.FloatField()   # % of original capacity
-    drive_health = models.FloatField()     # % of drive life remaining
+    drive_health = models.FloatField(null=True, blank=True)  # % of drive life left; None = not measured
     licence_valid = models.BooleanField(default=True)
     suspected_malware = models.BooleanField(default=False)
     source = models.CharField(max_length=20, default='simulated')

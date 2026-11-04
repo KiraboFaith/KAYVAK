@@ -17,8 +17,10 @@ function PrintReport({ report }) {
     },
     {
       check: 'Storage drive health',
-      value: `${report.measurements.drive_health}% of drive life left`,
-      result: statusOf(report, 'Storage drive'),
+      value: unchecked.includes('Storage drive')
+        ? 'Not measured (Windows does not report it for this drive)'
+        : `${report.measurements.drive_health}% of drive life left`,
+      result: unchecked.includes('Storage drive') ? 'Not checked' : statusOf(report, 'Storage drive'),
     },
     {
       check: 'Windows licence',

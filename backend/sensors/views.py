@@ -34,7 +34,10 @@ def health_report(request):
     recent = list(HealthReading.objects.all()[:TREND_WINDOW])[::-1]
     trends = {
         'battery': trend([r.battery_health for r in recent], BATTERY_WARNING, BATTERY_CRITICAL),
-        'drive': trend([r.drive_health for r in recent], DRIVE_WARNING, DRIVE_CRITICAL),
+        'drive': trend(
+            [r.drive_health for r in recent if r.drive_health is not None],
+            DRIVE_WARNING, DRIVE_CRITICAL,
+        ),
     }
 
     # Checks Windows would not answer: shown to the user, never silently counted as passed
@@ -43,6 +46,8 @@ def health_report(request):
         unchecked.append('Windows licence')
     if not reading.malware_checked:
         unchecked.append('Security')
+    if reading.drive_health is None:
+        unchecked.append('Storage drive')
 
     return Response({
         'timestamp': reading.timestamp,

@@ -97,6 +97,54 @@ class TrendTests(SimpleTestCase):
         result = trend([70, 65, 55, 50, 45], 60, 40)
         self.assertEqual(result['checks_to_warning'], 0)
         self.assertGreater(result['checks_to_critical'], 0)
+        
+class DriveHealthTests(SimpleTestCase):
+    """Commit 2: a hard drive's Wear 0 must not turn into "100% healthy"."""
+
+    def pct(self, text):
+        from sensors.management.commands.collect_windows import drive_percent_from_json
+        return drive_percent_from_json(text)
+
+    HDD = '{"Name":"TOSHIBA","MediaType":"HDD","Health":"%s","Wear":%s}'
+    SSD = '{"Name":"BC511","MediaType":"SSD","Health":"%s","Wear":%s}'
+
+    def test_hdd_wear_zero_and_healthy_word_is_not_measured(self):
+        self.assertIsNone(self.pct('[' + self.HDD % ('Healthy', 0) + ']'))
+
+    def test_ssd_wear_is_used(self):
+        self.assertEqual(self.pct('[' + self.SSD % ('Healthy', 5) + ']'), 95.0)
+
+    def test_hdd_wear_is_ignored_but_ssd_wear_is_used_on_the_same_laptop(self):
+        text = '[' + self.HDD % ('Healthy', 0) + ',' + self.SSD % ('Healthy', 12) + ']'
+        self.assertEqual(self.pct(text), 88.0)
+
+    def test_warning_word_is_still_a_real_signal_on_an_hdd(self):
+        self.assertEqual(self.pct('[' + self.HDD % ('Warning', 'null') + ']'), 60.0)
+
+    def test_unhealthy_word_wins_over_good_wear(self):
+        text = '[' + self.HDD % ('Unhealthy', 0) + ',' + self.SSD % ('Healthy', 3) + ']'
+        self.assertEqual(self.pct(text), 20.0)
+
+    def test_single_disk_object_is_handled(self):
+        self.assertIsNone(self.pct(self.HDD % ('Healthy', 0)))
+
+    def test_no_disks_at_all_is_an_error(self):
+        with self.assertRaises(RuntimeError):
+            self.pct('[]')
+
+    def test_unmeasured_drive_gives_no_finding(self):
+        report = analyse(make_reading(drive=None))
+        self.assertIsNone(find(report, 'Storage drive'))
+
+
+class UnmeasuredDriveEndpointTests(TestCase):
+    def test_unmeasured_drive_is_listed_as_unchecked_not_as_good(self):
+        HealthReading.objects.create(battery_health=90, drive_health=None, source='windows')
+        data = APIClient().get('/api/sensors/health/').data
+        self.assertIsNone(data['measurements']['drive_health'])
+        self.assertIn('Storage drive', data['unchecked'])
+        self.assertIsNone(data['trends']['drive'])
+        
 class HealthEndpointTests(TestCase):
     url = '/api/sensors/health/'
 
