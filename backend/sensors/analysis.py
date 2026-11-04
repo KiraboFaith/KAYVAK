@@ -17,11 +17,8 @@ def _level(value, warning, critical):
 def analyse(reading):
     findings = []
 
-    # FR-03: storage drive health (None = Windows could not measure it: no finding, no guess)
-    level = (
-        _level(reading.drive_health, DRIVE_WARNING, DRIVE_CRITICAL)
-        if reading.drive_health is not None else None
-    )
+    # FR-02: battery health
+    level = _level(reading.battery_health, BATTERY_WARNING, BATTERY_CRITICAL)
     if level:
         findings.append({
             'component': 'Battery',
@@ -36,8 +33,11 @@ def analyse(reading):
             ),                                                    # FR-08
         })
 
-    # FR-03: storage drive health
-    level = _level(reading.drive_health, DRIVE_WARNING, DRIVE_CRITICAL)
+    # FR-03: storage drive health (None = Windows could not measure it: no finding, no guess)
+    level = (
+        _level(reading.drive_health, DRIVE_WARNING, DRIVE_CRITICAL)
+        if reading.drive_health is not None else None
+    )
     if level:
         findings.append({
             'component': 'Storage drive',
