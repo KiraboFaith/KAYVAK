@@ -11,3 +11,4 @@ __pycache__/
 backend/venv/
 backend/db.sqlite3
 frontend/node_modules/
+analysis/data/
