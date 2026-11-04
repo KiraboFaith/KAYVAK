@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import SensorReading, HealthReading, NotificationSetting
+from .dataset import load_summary, percentile_rank
+from .models import DiskReading, SensorReading, HealthReading, NotificationSetting
 from .analysis import (
     analyse, trend,
     BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
@@ -75,3 +76,67 @@ def notification_settings(request):
         setting.asked = True
         setting.save()
     return Response({'enabled': setting.enabled, 'asked': setting.asked})
+
+
+DATASET_METRICS = [   # (field on DiskReading, name in the summary file, label shown to the user)
+    ('power_on_hours', 'power_on_hours', 'Power-on hours'),
+    ('load_unload_cycles', 'load_unload_cycles', 'Load/unload cycles'),
+    ('temperature', 'temperature', 'Temperature (°C)'),
+]
+
+
+@api_view(['GET'])
+def dataset_comparison(request):
+    """Compares this laptop's latest disk numbers with real drives from the Backblaze dataset."""
+    summary = load_summary()
+    if summary is None:
+        return Response({'detail': 'No dataset summary yet. Run analysis/export_summary.py'}, status=404)
+
+    newest = DiskReading.objects.select_related('reading').first()  # newest first
+    disks = list(newest.reading.disks.order_by('device_id')) if newest else []
+
+    drives = []
+    for disk in disks:
+        item = {
+            'device_id': disk.device_id,
+            'name': disk.name,
+            'media_type': disk.media_type,
+            'checked_at': disk.timestamp,
+            'metrics': [],
+        }
+        if disk.media_type != 'HDD':
+            item['note'] = 'Not compared: the dataset only contains hard drives (HDD).'
+        else:
+            for field, key, label in DATASET_METRICS:
+                value = getattr(disk, field)
+                numbers = summary['metrics'].get(key)
+                if value is None or numbers is None:
+                    continue
+                healthy, failed = numbers['healthy'], numbers['failed']
+                middle = summary['points'].index(50)
+                item['metrics'].append({
+                    'key': key,
+                    'label': label,
+                    'value': value,
+                    'percentile': round(percentile_rank(value, summary['points'], healthy), 1),
+                    'outside_range': value < healthy[0] or value > healthy[-1],
+                    'healthy_median': healthy[middle],
+                    'failed_median': failed[middle] if failed else None,
+                })
+        drives.append(item)
+
+    return Response({
+        'dataset': {
+            'source': summary['source'],
+            'models': summary['models'],
+            'date_from': summary['date_from'],
+            'date_to': summary['date_to'],
+            'healthy_drives': summary['healthy_drives'],
+            'failed_drives': summary['failed_drives'],
+        },
+        'drives': drives,
+        'caution': (
+            'This compares your drive\'s numbers with real drives. It does not predict '
+            'whether your drive will fail.'
+        ),
+    })

@@ -7,6 +7,7 @@ import FindingCard from './FindingCard';
 import MapeLoop from './MapeLoop';
 import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
+import DatasetPanel from './DatasetPanel';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
 const TOTAL_CHECKS = 4; // battery, drive, licence, security
@@ -140,6 +141,8 @@ function Dashboard() {
           )}
         </section>
 
+              
+        <DatasetPanel />
         <MapeLoop />
 
         <footer className="footer">
