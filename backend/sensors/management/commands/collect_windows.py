@@ -86,9 +86,24 @@ def battery_percent_from_xml(path):
         raise RuntimeError('No battery capacity found in the report')
     return round(max(0.0, min(100.0, full / design * 100)), 1)
 
+def battery_cycles_from_xml(path):
+    """Charge-cycle count from powercfg's battery report. None if the report has none."""
+    root = ET.parse(path).getroot()
+    for item in root.iter():
+        if local_name(item.tag) == 'CycleCount' and item.text and item.text.strip().isdigit():
+            return int(item.text.strip())
+    return None
+
+
+BATTERY_REPORT_PATH = os.path.join(tempfile.gettempdir(), 'kayvak_battery.xml')
+
+
+def read_battery_cycles():
+    """Reads the report that read_battery() just wrote, so call it right after."""
+    return battery_cycles_from_xml(BATTERY_REPORT_PATH)
 
 def read_battery():
-    path = os.path.join(tempfile.gettempdir(), 'kayvak_battery.xml')
+    path = BATTERY_REPORT_PATH
     result = subprocess.run(
         ['powercfg', '/batteryreport', '/xml', '/output', path],
         capture_output=True, text=True, timeout=60,
@@ -188,6 +203,11 @@ class Command(BaseCommand):
         except Exception as error:
             self.stderr.write(f'Battery not read, reading skipped: {error}')
             return
+        battery_cycles = None   # some laptops do not report cycles: that is fine, not an error
+        try:
+            battery_cycles = read_battery_cycles()
+        except Exception as error:
+            self.stdout.write(f'Battery cycles not read: {error}')
         try:
             drive = read_drive()
         except Exception as error:
@@ -214,6 +234,7 @@ class Command(BaseCommand):
 
         reading = HealthReading.objects.create(
             battery_health=battery,
+            battery_cycles=battery_cycles,
             drive_health=drive,
             licence_valid=licence_valid,
             suspected_malware=suspected_malware,

@@ -57,6 +57,7 @@ def health_report(request):
         'check_seconds': reading.check_seconds,
         'measurements': {
             'battery_health': reading.battery_health,
+            'battery_cycles': reading.battery_cycles,
             'drive_health': reading.drive_health,
         },
         'trends': trends,
