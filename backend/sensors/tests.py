@@ -136,6 +136,27 @@ class BatteryCycleTests(SimpleTestCase):
 
     def test_evidence_has_no_cycles_when_unknown(self):
         self.assertNotIn('cycles', find(analyse(make_reading(battery=70)), 'Battery')['evidence'])
+
+class RepairJudgementTests(SimpleTestCase):
+    def test_every_finding_has_a_repair_judgement(self):
+        report = analyse(make_reading(battery=30, drive=30, licence=False, malware=True))
+        for f in report['findings']:
+            self.assertTrue(f['repair'])
+            self.assertTrue(f['repair_note'])
+
+    def test_worn_battery_is_not_a_repair_yet_but_dead_one_is_minor(self):
+        self.assertEqual(find(analyse(make_reading(battery=70)), 'Battery')['repair'], 'No repair needed yet')
+        self.assertEqual(find(analyse(make_reading(battery=30)), 'Battery')['repair'], 'Minor repair')
+
+    def test_software_findings_never_justify_hardware_repair(self):
+        report = analyse(make_reading(licence=False, malware=True))
+        self.assertEqual(find(report, 'Windows licence')['repair'], 'Software fix only')
+        self.assertEqual(find(report, 'Security')['repair'], 'Software fix only')
+
+    def test_no_finding_ever_calls_for_a_major_repair(self):
+        report = analyse(make_reading(battery=1, drive=1, licence=False, malware=True))
+        for f in report['findings']:
+            self.assertNotEqual(f['repair'], 'Major repair')
                 
 class TrendTests(SimpleTestCase):
     def test_too_few_readings_gives_no_trend(self):
