@@ -81,6 +81,62 @@ class AnalyseTests(SimpleTestCase):
         for f in report['findings']:
             for key in ('explanation', 'evidence', 'advice', 'type'):
                 self.assertTrue(f[key])
+                
+class DriveReadErrorTests(TestCase):
+    def reading_with_errors(self, errors, drive=90):
+        reading = HealthReading.objects.create(battery_health=90, drive_health=drive)
+        DiskReading.objects.create(
+            reading=reading, device_id=0, name='X', read_errors_uncorrected=errors,
+        )
+        return reading
+
+    def test_uncorrected_errors_give_a_drive_warning(self):
+        finding = find(analyse(self.reading_with_errors(3)), 'Storage drive')
+        self.assertEqual(finding['status'], 'Warning')
+        self.assertIn('3 uncorrected read errors', finding['evidence'])
+
+    def test_no_errors_means_no_finding(self):
+        self.assertIsNone(find(analyse(self.reading_with_errors(0)), 'Storage drive'))
+
+    def test_unreported_errors_are_not_counted(self):
+        self.assertIsNone(find(analyse(self.reading_with_errors(None)), 'Storage drive'))
+
+    def test_worn_drive_gives_one_finding_not_two(self):
+        report = analyse(self.reading_with_errors(5, drive=30))
+        drive_findings = [f for f in report['findings'] if f['component'] == 'Storage drive']
+        self.assertEqual(len(drive_findings), 1)
+        self.assertEqual(drive_findings[0]['status'], 'Critical')
+                
+class BatteryCycleTests(SimpleTestCase):
+    def xml_file(self, body):
+        import os, tempfile
+        handle, path = tempfile.mkstemp(suffix='.xml')
+        with os.fdopen(handle, 'w') as f:
+            f.write(
+                '<BatteryReport xmlns="http://schemas.microsoft.com/battery/2012"><Batteries Count="1">'
+                f'<Battery>{body}</Battery></Batteries></BatteryReport>'
+            )
+        self.addCleanup(os.remove, path)
+        return path
+
+    def test_cycle_count_is_read_from_the_report(self):
+        from sensors.management.commands.collect_windows import battery_cycles_from_xml
+        path = self.xml_file('<DesignCapacity>50000</DesignCapacity><CycleCount>412</CycleCount>')
+        self.assertEqual(battery_cycles_from_xml(path), 412)
+
+    def test_missing_cycle_count_gives_none(self):
+        from sensors.management.commands.collect_windows import battery_cycles_from_xml
+        path = self.xml_file('<DesignCapacity>50000</DesignCapacity>')
+        self.assertIsNone(battery_cycles_from_xml(path))
+
+    def test_evidence_mentions_cycles_when_known(self):
+        reading = make_reading(battery=70)
+        reading.battery_cycles = 412
+        self.assertIn('412 charge cycles', find(analyse(reading), 'Battery')['evidence'])
+
+    def test_evidence_has_no_cycles_when_unknown(self):
+        self.assertNotIn('cycles', find(analyse(make_reading(battery=70)), 'Battery')['evidence'])
+                
 class TrendTests(SimpleTestCase):
     def test_too_few_readings_gives_no_trend(self):
         self.assertIsNone(trend([90, 89, 88], 60, 40))

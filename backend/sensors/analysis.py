@@ -20,6 +20,12 @@ def _level(value, warning, critical):
         return 'Warning'
     return None
 
+def uncorrected_read_errors(reading):
+    """Total uncorrected read errors across this reading's disks (0 when none are known)."""
+    disks = getattr(reading, 'disks', None)
+    if disks is None:
+        return 0
+    return sum(d.read_errors_uncorrected or 0 for d in disks.all())
 
 def analyse(reading):
     findings = []
@@ -60,6 +66,20 @@ def analyse(reading):
                 if level == 'Critical' else
                 'Back up your important files soon.'
             ),
+        })
+        
+    # FR-03 (early warning): uncorrected read errors mean the drive failed to read data back.
+    # Any at all is a real signal, so this alone gives a Warning (if health already flagged
+    # the drive, that finding stays and this one is skipped).
+    errors = uncorrected_read_errors(reading)
+    if errors > 0 and not level:
+        findings.append({
+            'component': 'Storage drive',
+            'status': 'Warning',
+            'type': 'hardware',
+            'explanation': 'Your storage drive has failed to read some data correctly.',
+            'evidence': f'Windows counted {errors} uncorrected read errors on this drive.',
+            'advice': 'Back up your important files now and check again later. If the number grows, replace the drive.',
         })
 
     # FR-05: licence
