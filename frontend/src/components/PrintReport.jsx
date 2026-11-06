@@ -86,6 +86,9 @@ function PrintReport({ report }) {
               <strong>Proof:</strong> {f.evidence}
             </p>
             <p>
+              <strong>Repair size:</strong> {f.repair}. {f.repair_note}
+            </p>
+            <p>
               <strong>What to do:</strong> {f.advice}
             </p>
             {getCareTips(f.component).length > 0 && (

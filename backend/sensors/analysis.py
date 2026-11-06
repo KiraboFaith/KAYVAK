@@ -20,6 +20,15 @@ def _level(value, warning, critical):
         return 'Warning'
     return None
 
+
+# How big a repair each finding justifies. This is the "is a major repair justified?" check.
+# 'Major repair' (for example a new motherboard) is deliberately never given: none of the
+# checks here can show that a board-level fault exists.
+REPAIR_NONE = 'No repair needed yet'
+REPAIR_MINOR = 'Minor repair'
+REPAIR_SOFTWARE = 'Software fix only'
+
+
 def uncorrected_read_errors(reading):
     """Total uncorrected read errors across this reading's disks (0 when none are known)."""
     disks = getattr(reading, 'disks', None)
@@ -27,10 +36,12 @@ def uncorrected_read_errors(reading):
         return 0
     return sum(d.read_errors_uncorrected or 0 for d in disks.all())
 
+
 def analyse(reading):
     findings = []
 
     # FR-02: battery health
+    cycles = getattr(reading, 'battery_cycles', None)   # None = this laptop does not report it
     level = _level(reading.battery_health, BATTERY_WARNING, BATTERY_CRITICAL)
     if level:
         findings.append({
@@ -38,15 +49,23 @@ def analyse(reading):
             'status': level,
             'type': 'hardware',                                   # FR-04
             'explanation': 'Your battery now holds much less charge than when it was new.',  # FR-06
-                        'evidence': (                                         # FR-07
+            'evidence': (                                         # FR-07
                 f'Battery health is {reading.battery_health:.0f}% of original capacity '
                 f'({100 - reading.battery_health:.0f}% worn).'
+                + (f' It has been through {cycles} charge cycles.' if cycles is not None else '')
             ),
             'advice': (
                 'See a technician soon. If the laptop body looks swollen, stop using it.'
                 if level == 'Critical' else
                 'You can keep using it. Lower screen brightness and close unused apps to save power.'
             ),                                                    # FR-08
+            'repair': REPAIR_MINOR if level == 'Critical' else REPAIR_NONE,
+            'repair_note': (
+                'Replacing the battery is a minor repair. This finding alone does not justify '
+                'a major repair such as a new motherboard.'
+                if level == 'Critical' else
+                'A worn battery is normal wear and tear. No repair is needed yet.'
+            ),
         })
 
     # FR-03: storage drive health (None = Windows could not measure it: no finding, no guess)
@@ -66,8 +85,15 @@ def analyse(reading):
                 if level == 'Critical' else
                 'Back up your important files soon.'
             ),
+            'repair': REPAIR_MINOR if level == 'Critical' else REPAIR_NONE,
+            'repair_note': (
+                'Replacing the drive is a part swap, which counts as a minor repair. This finding '
+                'alone does not justify a major repair such as a new motherboard.'
+                if level == 'Critical' else
+                'Back up your files. A replacement drive is not needed yet.'
+            ),
         })
-        
+
     # FR-03 (early warning): uncorrected read errors mean the drive failed to read data back.
     # Any at all is a real signal, so this alone gives a Warning (if health already flagged
     # the drive, that finding stays and this one is skipped).
@@ -80,6 +106,11 @@ def analyse(reading):
             'explanation': 'Your storage drive has failed to read some data correctly.',
             'evidence': f'Windows counted {errors} uncorrected read errors on this drive.',
             'advice': 'Back up your important files now and check again later. If the number grows, replace the drive.',
+            'repair': REPAIR_MINOR,
+            'repair_note': (
+                'If the errors keep growing, replacing the drive is justified. '
+                'It is a part swap, not a major repair.'
+            ),
         })
 
     # FR-05: licence
@@ -91,6 +122,8 @@ def analyse(reading):
             'explanation': 'Your Windows licence is expired or not valid.',
             'evidence': 'The licence check failed.',
             'advice': 'Get a genuine licence. Do not use cracked tools, they can carry viruses.',
+            'repair': REPAIR_SOFTWARE,
+            'repair_note': 'This is fixed with a genuine licence, not a hardware repair.',
         })
 
     # FR-04: suspected malware
@@ -102,6 +135,8 @@ def analyse(reading):
             'explanation': 'The laptop may have a virus or harmful software.',
             'evidence': 'Suspicious activity was detected.',
             'advice': 'Run your antivirus scan. If the problem stays, see a technician.',
+            'repair': REPAIR_SOFTWARE,
+            'repair_note': 'Cleaning the laptop is a software job. This finding does not justify any hardware repair.',
         })
 
     # FR-01: overall status = the worst finding

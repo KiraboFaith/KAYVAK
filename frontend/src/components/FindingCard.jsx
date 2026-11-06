@@ -39,6 +39,13 @@ function FindingCard({ finding, index }) {
         <span className="proof-text">{finding.evidence}</span>
       </div>
 
+      <div className="proof">
+        <span className="proof-label">Repair size</span>
+        <span className="proof-text">
+          <strong>{finding.repair}.</strong> {finding.repair_note}
+        </span>
+      </div>
+
       <div className="todo">
         <span className="todo-label">What to do</span>
         <p>{finding.advice}</p>
