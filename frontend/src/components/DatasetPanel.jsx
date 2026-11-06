@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/dataset/';
 
@@ -12,7 +13,7 @@ function DatasetPanel() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    fetch(API_URL)
+    apiFetch(API_URL)
       .then((res) => {
         if (!res.ok) throw new Error('No dataset summary yet');
         return res.json();

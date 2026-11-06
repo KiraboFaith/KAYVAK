@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,8 @@ SECRET_KEY = os.environ.get('KAYVAK_SECRET_KEY', 'dev-only-key-change-me')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Only answer requests addressed to this laptop (blocks DNS rebinding attacks).
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -135,3 +137,11 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
+
+# Let the dashboard send our custom header (see sensors/permissions.py).
+CORS_ALLOW_HEADERS = list(default_headers) + ['x-kayvak-client']
+
+# Every API view requires that header unless it says otherwise.
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': ['sensors.permissions.HasKayvakHeader'],
+}

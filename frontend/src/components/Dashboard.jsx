@@ -8,6 +8,7 @@ import MapeLoop from './MapeLoop';
 import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
 import DatasetPanel from './DatasetPanel';
+import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
 const TOTAL_CHECKS = 4; // battery, drive, licence, security
@@ -20,7 +21,7 @@ function Dashboard() {
 
   useEffect(() => {
     const fetchReport = () => {
-      fetch(API_URL)
+      apiFetch(API_URL)
         .then((res) => {
           if (!res.ok) throw new Error('No data yet');
           return res.json();

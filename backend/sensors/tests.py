@@ -1,10 +1,15 @@
 from types import SimpleNamespace
 
 from django.test import SimpleTestCase, TestCase
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient as _APIClient
 
 from .analysis import analyse, trend
 from .models import DiskReading, HealthReading
+
+
+def APIClient():
+    """A test client that sends the same header the dashboard sends."""
+    return _APIClient(HTTP_X_KAYVAK_CLIENT='dashboard')
 
 
 
@@ -434,3 +439,21 @@ class DatasetComparisonTests(TestCase):
         from unittest import mock
         with mock.patch('sensors.dataset.SUMMARY_PATH', self.make_summary_file()):
             self.assertEqual(APIClient().get(self.url).data['drives'], [])
+            
+class ServerProtectionTests(TestCase):
+    url = '/api/sensors/health/'
+
+    def test_request_without_header_is_refused(self):
+        self.assertEqual(_APIClient().get(self.url).status_code, 403)
+
+    def test_request_with_wrong_header_is_refused(self):
+        client = _APIClient(HTTP_X_KAYVAK_CLIENT='something-else')
+        self.assertEqual(client.get(self.url).status_code, 403)
+
+    def test_request_with_header_gets_past_the_check(self):
+        # 404 is fine here: there is no data yet, but the request was allowed in.
+        self.assertNotEqual(APIClient().get(self.url).status_code, 403)
+
+    def test_unknown_host_is_refused(self):
+        client = APIClient()
+        self.assertEqual(client.get(self.url, HTTP_HOST='evil.example.com').status_code, 400)

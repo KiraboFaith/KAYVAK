@@ -12,7 +12,7 @@ Backend (in `backend`, two terminals). Terminal 1:
 ```
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver 127.0.0.1:8000
 
 ```
 
