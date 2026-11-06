@@ -37,19 +37,24 @@ class AnalyseTests(SimpleTestCase):
         self.assertEqual(report['findings'], [])
 
     def test_battery_warning(self):
-        report = analyse(make_reading(battery=55))
+        report = analyse(make_reading(battery=70))
         self.assertEqual(find(report, 'Battery')['status'], 'Warning')
         self.assertEqual(report['overall'], 'Warning')
 
     def test_battery_critical(self):
-        report = analyse(make_reading(battery=35))
+        report = analyse(make_reading(battery=55))
         self.assertEqual(find(report, 'Battery')['status'], 'Critical')
         self.assertEqual(report['overall'], 'Critical')
 
     def test_battery_limits(self):
-        # exactly 60 is still Good, exactly 40 is Warning (not Critical)
-        self.assertIsNone(find(analyse(make_reading(battery=60)), 'Battery'))
-        self.assertEqual(find(analyse(make_reading(battery=40)), 'Battery')['status'], 'Warning')
+        # exactly 80 is still Good, exactly 60 is Warning (not Critical)
+        self.assertIsNone(find(analyse(make_reading(battery=80)), 'Battery'))
+        self.assertEqual(find(analyse(make_reading(battery=60)), 'Battery')['status'], 'Warning')
+
+    def test_battery_evidence_shows_wear(self):
+        evidence = find(analyse(make_reading(battery=72)), 'Battery')['evidence']
+        self.assertIn('72%', evidence)
+        self.assertIn('28% worn', evidence)
 
     def test_drive_warning_and_critical(self):
         self.assertEqual(find(analyse(make_reading(drive=65)), 'Storage drive')['status'], 'Warning')
@@ -66,7 +71,7 @@ class AnalyseTests(SimpleTestCase):
         self.assertEqual(report['overall'], 'Critical')
 
     def test_overall_is_the_worst_finding(self):
-        report = analyse(make_reading(battery=55, malware=True))
+        report = analyse(make_reading(battery=70, malware=True))
         self.assertEqual(len(report['findings']), 2)
         self.assertEqual(report['overall'], 'Critical')
 
@@ -326,7 +331,7 @@ class AlertDecisionTests(SimpleTestCase):
 
     def test_only_critical_is_urgent(self):
         from .notify import urgent_findings
-        report = analyse(make_reading(battery=55, drive=30))  # battery Warning, drive Critical
+        report = analyse(make_reading(battery=70, drive=30))  # battery Warning, drive Critical
         self.assertEqual([f['component'] for f in urgent_findings(report)], ['Storage drive'])
 
 

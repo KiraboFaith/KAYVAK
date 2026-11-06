@@ -1,5 +1,12 @@
-BATTERY_WARNING = 60
-BATTERY_CRITICAL = 40
+# Cut-offs. Battery = % of original capacity left, drive = % of drive life left.
+# These are our own heuristics, so each one says where it comes from.
+# Battery 80: the commonly used "battery is worn" reference point (FYP feedback document,
+#   Step 2). TODO: replace this note with the source you actually cite.
+# Battery 60: our own cut-off for "replacement worth considering". TODO: check it against
+#   the technician survey and write the result here.
+# Drive 70 and 40: our own cut-offs. TODO: write down why you chose them.
+BATTERY_WARNING = 80
+BATTERY_CRITICAL = 60
 DRIVE_WARNING = 70
 DRIVE_CRITICAL = 40
 # Trend settings (the Knowledge part of MAPE-K: past readings predict the future)
@@ -25,7 +32,10 @@ def analyse(reading):
             'status': level,
             'type': 'hardware',                                   # FR-04
             'explanation': 'Your battery now holds much less charge than when it was new.',  # FR-06
-            'evidence': f'Battery health is {reading.battery_health:.0f}% of original capacity.',  # FR-07
+                        'evidence': (                                         # FR-07
+                f'Battery health is {reading.battery_health:.0f}% of original capacity '
+                f'({100 - reading.battery_health:.0f}% worn).'
+            ),
             'advice': (
                 'See a technician soon. If the laptop body looks swollen, stop using it.'
                 if level == 'Critical' else
