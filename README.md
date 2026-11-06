@@ -57,12 +57,13 @@ Requirement numbers come from the Requirements Elicitation Report.
 |---|---|---|---|
 | FR-01 overall status | Must | `analysis.py` (`analyse`) | `tests.py` |
 | FR-02 battery health | Must | `collect_windows.py` (`read_battery`), `analysis.py` | `tests.py` |
-| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` | `tests.py` |
+| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` (health status, wear and uncorrected read errors) | `tests.py` |
 | FR-04 software or hardware, malware | Must | `analysis.py` (`type`), `read_malware` | `tests.py` |
 | FR-05 licence alert | Should | `read_licence`, `analysis.py` | `tests.py` |
 | FR-06 plain language | Must | `analysis.py` (`explanation`) | `tests.py` |
 | FR-07 evidence for each problem | Must | `analysis.py` (`evidence`) | `tests.py` |
 | FR-08 technician or self-fix advice | Should | `analysis.py` (`advice`) | `tests.py` |
+| Extra: repair size (minor or major) | Should | `analysis.py` (`repair`, `repair_note`), `FindingCard.jsx`, `PrintReport.jsx` | `tests.py` |
 | FR-09 colour and text label | Must | `statusStyles.js`, `FindingCard.jsx` | by eye |
 | FR-10 printable report | Should | `PrintReport.jsx` | by eye |
 | FR-11 care guidance | Should | `careTips.js` | by eye |
@@ -73,5 +74,5 @@ Requirement numbers come from the Requirements Elicitation Report.
 | NFR-03 performance (60 s) | Should | `collect_windows.py` times each check | `tests.py` (timing is saved) |
 | NFR-04 accuracy (90%) | Must | `test_accuracy.py` (cases written by us, not yet by a technician) | `test_accuracy.py` |
 | NFR-05 core checks need no internet | Should | all checks run locally | by use |
-| NFR-06 Windows 10 and 11 | Must | PowerShell and `powercfg` collector | tested on one laptop only |
+| NFR-06 Windows 10 and 11 | Must | PowerShell (JSON output) and `powercfg /xml` collector; no `wmic` | tested on one laptop only (Windows version: 26H2) |
 | NFR-07 reports only for the user's account | Should | not built | - |
