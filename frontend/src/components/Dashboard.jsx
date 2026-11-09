@@ -6,7 +6,6 @@ import MeterBar from './MeterBar';
 import FindingCard from './FindingCard';
 import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
-import DatasetPanel from './DatasetPanel';
 import SnapshotPanel from './SnapshotPanel';
 import KeyboardTest from './KeyboardTest';
 import { apiFetch } from '../api';
@@ -149,7 +148,6 @@ function Dashboard() {
         </section>
 
         <SnapshotPanel />      
-        <DatasetPanel />
 
         <footer className="footer">
           KAYVAK gives advice only. It does not replace a technician.{' '}

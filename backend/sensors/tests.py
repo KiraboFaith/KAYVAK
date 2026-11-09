@@ -465,63 +465,6 @@ class CollectorAlertTests(TestCase):
         self.assertEqual(HealthReading.objects.count(), 1)        
         
         
-class DatasetComparisonTests(TestCase):
-    url = '/api/sensors/dataset/'
-    POINTS = list(range(0, 101, 5))
-
-    def make_summary_file(self):
-        import json
-        import tempfile
-        healthy = [float(i * 100) for i in range(21)]      # 0, 100, ... 2000
-        summary = {
-            'source': 'Backblaze Drive Stats', 'models': ['TEST MODEL'],
-            'date_from': '2025-10-01', 'date_to': '2025-12-31',
-            'healthy_drives': 100, 'failed_drives': 5, 'points': self.POINTS,
-            'metrics': {'power_on_hours': {'healthy': healthy, 'failed': [v + 500 for v in healthy]}},
-        }
-        handle = tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8')
-        json.dump(summary, handle)
-        handle.close()
-        return handle.name
-
-    def test_percentile_rank(self):
-        from sensors.dataset import percentile_rank
-        q = [float(i * 100) for i in range(21)]
-        self.assertEqual(percentile_rank(-5, self.POINTS, q), 0.0)
-        self.assertEqual(percentile_rank(5000, self.POINTS, q), 100.0)
-        self.assertEqual(percentile_rank(1000, self.POINTS, q), 50.0)
-        self.assertEqual(percentile_rank(150, self.POINTS, q), 7.5)
-
-    def test_404_when_there_is_no_summary_file(self):
-        from unittest import mock
-        with mock.patch('sensors.dataset.SUMMARY_PATH', '/no/such/file.json'):
-            self.assertEqual(APIClient().get(self.url).status_code, 404)
-
-    def test_hard_drive_is_compared_and_ssd_is_not(self):
-        from unittest import mock
-        reading = HealthReading.objects.create(battery_health=90, drive_health=None, source='windows')
-        DiskReading.objects.create(reading=reading, device_id=0, name='TOSHIBA', media_type='HDD',
-                                   power_on_hours=1000, temperature=34)
-        DiskReading.objects.create(reading=reading, device_id=1, name='SK hynix', media_type='SSD',
-                                   power_on_hours=None, temperature=46)
-        with mock.patch('sensors.dataset.SUMMARY_PATH', self.make_summary_file()):
-            data = APIClient().get(self.url).data
-        hdd, ssd = data['drives']
-        metric = hdd['metrics'][0]
-        self.assertEqual(metric['key'], 'power_on_hours')
-        self.assertEqual(metric['percentile'], 50.0)
-        self.assertEqual(metric['healthy_median'], 1000.0)
-        self.assertEqual(metric['failed_median'], 1500.0)
-        self.assertEqual(len(hdd['metrics']), 1)   # temperature is not in this test summary
-        self.assertEqual(ssd['metrics'], [])
-        self.assertIn('hard drives', ssd['note'])
-        self.assertEqual(data['dataset']['healthy_drives'], 100)
-
-    def test_no_disk_rows_gives_an_empty_list(self):
-        from unittest import mock
-        with mock.patch('sensors.dataset.SUMMARY_PATH', self.make_summary_file()):
-            self.assertEqual(APIClient().get(self.url).data['drives'], [])
-            
 class ServerProtectionTests(TestCase):
     url = '/api/sensors/health/'
 
