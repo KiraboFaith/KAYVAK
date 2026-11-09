@@ -1,0 +1,43 @@
+/* ---------- Keyboard test ---------- */
+.kbd-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0.8rem 0;
+  overflow-x: auto;
+}
+.kbd-row {
+  display: flex;
+  gap: 6px;
+  min-width: 640px;
+}
+.kbd-key {
+  min-width: 0;
+  padding: 0.7rem 0.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text-h);
+  font: 0.8rem var(--sans);
+  cursor: pointer;
+}
+.kbd-key[data-state='ok'] {
+  background: var(--good-soft);
+  border-color: var(--good);
+  color: var(--good);
+  font-weight: 700;
+}
+.kbd-key[data-state='down'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.kbd-key[data-state='skipped'] {
+  background: #eef1f6;
+  color: #9aa6ba;
+  border-style: dashed;
+}
+.kbd-progress {
+  font-size: 1.05rem;
+  margin: 0.4rem 0;
+}

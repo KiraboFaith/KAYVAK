@@ -9,6 +9,7 @@ import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
 import DatasetPanel from './DatasetPanel';
 import SnapshotPanel from './SnapshotPanel';
+import KeyboardTest from './KeyboardTest';
 import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
@@ -19,6 +20,7 @@ function Dashboard() {
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showKeyboard, setShowKeyboard] = useState(false);
 
   useEffect(() => {
     const fetchReport = () => {
@@ -76,6 +78,9 @@ function Dashboard() {
               {updatedAt ? updatedAt.toLocaleTimeString() : ''}
             </span>
             <button className="btn btn-quiet" onClick={() => setShowSettings((open) => !open)}>
+            <button className="btn btn-quiet" onClick={() => setShowKeyboard((open) => !open)}>
+              ⌨ Keyboard test
+            </button>
               ⚙ Settings
             </button>
             <button className="btn" onClick={() => window.print()}>
@@ -85,6 +90,7 @@ function Dashboard() {
         </header>
 
         {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+        {showKeyboard && <KeyboardTest onClose={() => setShowKeyboard(false)} />}
         {error && <p className="banner">{error}</p>}
         {unchecked.length > 0 && (
           <p className="banner">
