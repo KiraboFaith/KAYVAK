@@ -43,6 +43,17 @@ python manage.py test sensors
 - Execute: the dashboard shows the result and a printable report. Nothing is repaired.
 - Knowledge: the limits and every past reading are kept in the database.
 
+## Before and after a repair (snapshot)
+
+Scan the laptop before handing it in and again on collection. KAYVAK compares the two scans
+part by part: drive, memory, battery, screen and Windows install date. Serial numbers are never
+stored, only a short fingerprint. It cannot see keyboard, hinge, charging-port or screen-cable work.
+
+1. Run the backend in an administrator PowerShell, so drive serials can be read.
+2. Unplug external screens.
+3. Dashboard, "Before and after a repair": scan before, then scan after (about 20 seconds each).
+   Or from the command line: `python manage.py take_snapshot --label before`
+
 ## Notifications
 
 Critical problems show a Windows pop-up (written by `collect_windows`), so the owner
