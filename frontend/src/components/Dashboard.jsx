@@ -4,7 +4,6 @@ import Heartbeat from './Heartbeat';
 import HealthRing from './HealthRing';
 import MeterBar from './MeterBar';
 import FindingCard from './FindingCard';
-import MapeLoop from './MapeLoop';
 import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
 import DatasetPanel from './DatasetPanel';
@@ -151,7 +150,6 @@ function Dashboard() {
 
         <SnapshotPanel />      
         <DatasetPanel />
-        <MapeLoop />
 
         <footer className="footer">
           KAYVAK gives advice only. It does not replace a technician.{' '}

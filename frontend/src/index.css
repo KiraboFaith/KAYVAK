@@ -516,61 +516,6 @@ h3 {
   animation: float 3s ease-in-out infinite;
 }
 
-/* ---------- MAPE-K loop ---------- */
-.mape-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 14px;
-}
-.mape-step {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  font-size: 14px;
-  border-radius: 14px;
-  border: 1px solid var(--panel-border);
-  background: var(--panel);
-  animation: step-glow 8s ease-in-out infinite;
-}
-.mape-step strong,
-.mape-knowledge strong {
-  color: var(--text-h);
-  font-size: 16px;
-}
-.mape-letter {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  font-family: var(--mono);
-  font-weight: 700;
-  color: #ffffff;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-}
-.mape-knowledge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  font-size: 14px;
-  border: 1px dashed var(--panel-border);
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(37, 99, 235, 0.1) 50%,
-    transparent 70%
-  );
-  background-size: 250% 100%;
-  animation: shimmer 5s linear infinite;
-}
-
 .footer {
   text-align: center;
   font-size: 13px;
@@ -628,25 +573,6 @@ h3 {
 @keyframes float {
   50% {
     transform: translateY(-6px);
-  }
-}
-@keyframes shimmer {
-  to {
-    background-position: -250% 0;
-  }
-}
-@keyframes step-glow {
-  0%,
-  22% {
-    border-color: var(--accent);
-    background: rgba(37, 99, 235, 0.1);
-    box-shadow: 0 0 24px rgba(37, 99, 235, 0.25);
-  }
-  30%,
-  100% {
-    border-color: var(--panel-border);
-    background: var(--panel);
-    box-shadow: none;
   }
 }
 
