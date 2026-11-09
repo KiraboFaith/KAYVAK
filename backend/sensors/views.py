@@ -1,7 +1,11 @@
+import platform
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .dataset import load_summary, percentile_rank
-from .models import DiskReading, SensorReading, HealthReading, NotificationSetting
+from .comparison import compare
+from .identifiers import collect_snapshot_from_windows, snapshot_summary
+from .models import DiskReading, SensorReading, HealthReading, NotificationSetting, Snapshot
 from .analysis import (
     analyse, trend,
     BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
@@ -141,3 +145,41 @@ def dataset_comparison(request):
             'whether your drive will fail.'
         ),
     })
+    
+
+
+@api_view(['GET', 'POST'])
+def snapshots(request):
+    """GET: the saved snapshots, newest first.
+    POST {"label": "before"}: scan this laptop now and save the result.
+    The scan only ever runs fixed commands. The label is just text we store."""
+    if request.method == 'POST':
+        label = request.data.get('label', 'scan')
+        if not isinstance(label, str) or not label.strip() or len(label.strip()) > 60:
+            return Response({'detail': '"label" must be short text, for example "before"'}, status=400)
+        if platform.system() != 'Windows':
+            return Response({'detail': 'Snapshots can only be taken on the Windows laptop.'}, status=501)
+        data = collect_snapshot_from_windows()
+        snapshot = Snapshot.objects.create(label=label.strip(), data=data)
+        return Response(snapshot_summary(snapshot), status=201)
+    return Response([snapshot_summary(s) for s in Snapshot.objects.all()[:20]])
+
+
+@api_view(['GET'])
+def snapshot_compare(request):
+    """GET ?before=<id>&after=<id>: what changed between two saved snapshots."""
+    try:
+        before_id = int(request.query_params.get('before'))
+        after_id = int(request.query_params.get('after'))
+    except (TypeError, ValueError):
+        return Response({'detail': 'Give two snapshot numbers: ?before=1&after=2'}, status=400)
+    if before_id == after_id:
+        return Response({'detail': 'Pick two different scans to compare.'}, status=400)
+    before = Snapshot.objects.filter(pk=before_id).first()
+    after = Snapshot.objects.filter(pk=after_id).first()
+    if before is None or after is None:
+        return Response({'detail': 'One of those snapshots does not exist.'}, status=404)
+    result = compare(before.data, after.data)
+    result['before'] = snapshot_summary(before)
+    result['after'] = snapshot_summary(after)
+    return Response(result)
