@@ -1,0 +1,80 @@
+/* ---------- Before / after snapshot ---------- */
+.snap-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0.4rem 0;
+}
+.snap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+.snap-scans {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.92rem;
+}
+.snap-warn {
+  color: var(--warn);
+}
+.snap-summary {
+  font-weight: 600;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  margin: 0.6rem 0;
+  background: var(--good-soft);
+  color: var(--good);
+}
+.snap-summary[data-changed='true'] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.snap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.snap-table th,
+.snap-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+.snap-summary-line {
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+.snap-item {
+  margin: 0.2rem 0;
+}
+.snap-flag {
+  margin: 0.3rem 0;
+  color: var(--warn);
+  font-weight: 600;
+}
+.snap-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--good-soft);
+  color: var(--good);
+}
+.snap-badge.small {
+  font-size: 0.72rem;
+}
+.snap-badge[data-result='changed'],
+.snap-badge[data-result='added'],
+.snap-badge[data-result='removed'] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.snap-badge[data-result='not_checked'] {
+  background: #e8edf5;
+  color: var(--muted);
+}

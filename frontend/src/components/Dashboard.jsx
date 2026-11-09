@@ -8,6 +8,7 @@ import MapeLoop from './MapeLoop';
 import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
 import DatasetPanel from './DatasetPanel';
+import SnapshotPanel from './SnapshotPanel';
 import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
@@ -142,7 +143,7 @@ function Dashboard() {
           )}
         </section>
 
-              
+        <SnapshotPanel />      
         <DatasetPanel />
         <MapeLoop />
 
