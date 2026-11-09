@@ -69,3 +69,17 @@ class NotificationSetting(models.Model):
 
     def __str__(self):
         return f"notifications {'on' if self.enabled else 'off'}"
+    
+
+
+class Snapshot(models.Model):
+    """One scan of the laptop's parts, saved so a later scan can be compared with it."""
+    label = models.CharField(max_length=60)      # e.g. "before" or "after"
+    created = models.DateTimeField(auto_now_add=True)
+    data = models.JSONField()                    # see identifiers.collect_snapshot
+
+    class Meta:
+        ordering = ['-created', '-id']           # newest first
+
+    def __str__(self):
+        return f'{self.label} ({self.created:%Y-%m-%d %H:%M})'
