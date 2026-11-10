@@ -98,3 +98,17 @@ class QueuedEmail(models.Model):
 
     def __str__(self):
         return f'{self.subject} (waiting since {self.created:%Y-%m-%d %H:%M})'
+    
+class BlackoutEvent(models.Model):
+    """One unexpected shutdown found in the Windows event log, with KAYVAK's plain-words report."""
+    event_time = models.DateTimeField(unique=True)   # when Windows wrote it (the restart)
+    bugcheck = models.CharField(max_length=20, blank=True)   # stop code, empty if none
+    cause = models.CharField(max_length=20)          # 'crash', 'battery' or 'unknown'
+    summary = models.TextField()
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-event_time']
+
+    def __str__(self):
+        return f'{self.event_time:%Y-%m-%d %H:%M}: {self.cause}'
