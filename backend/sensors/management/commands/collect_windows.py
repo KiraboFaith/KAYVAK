@@ -10,7 +10,11 @@ from django.core.management.base import BaseCommand, CommandError
 
 from sensors.analysis import analyse
 from sensors.models import DiskReading, HealthReading, NotificationSetting
-from sensors.notify import TOAST_TITLE, decide_alert, show_windows_toast, toast_body, urgent_findings
+from sensors.notify import (
+    TOAST_TITLE, decide_alert, decide_low_charge_warning, show_windows_toast,
+    toast_body, urgent_email_text, urgent_findings,
+)
+from sensors.outbox import send_or_queue
 CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
 # Drive: a health WORD from Windows is not a measurement. "Healthy" alone tells us nothing
 # about how much life is left, so it gives no number. "Warning" and "Unhealthy" are real
@@ -211,6 +215,8 @@ class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.alerted = set()  # urgent problems the owner has already been told about
+        self.emailed = set()  # urgent problems already sent by email
+        self.low_charge_warned = False
     
     def add_arguments(self, parser):
         parser.add_argument('--once', action='store_true', help='take one reading and stop')
@@ -282,6 +288,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Inserted: {reading} (took {seconds} s)')
         self.save_disk_details(reading)
         self.alert_if_urgent(reading)
+        self.email_alerts(reading)
         
     def save_disk_details(self, reading):
         """Saves the per-disk numbers. If this fails, the main reading is already saved."""
@@ -303,3 +310,23 @@ class Command(BaseCommand):
             self.stdout.write('Urgent alert shown.')
         except Exception as error:
             self.stderr.write(f'Could not show the alert: {error}')
+            
+    def email_alerts(self, reading):
+        """Emails urgent problems and a low-battery warning, if the owner agreed to email."""
+        setting = NotificationSetting.current()
+        urgent = urgent_findings(analyse(reading))
+        email_now, self.emailed = decide_alert(
+            setting.email_enabled, {f['component'] for f in urgent}, self.emailed)
+        if email_now:
+            subject, body = urgent_email_text(urgent)
+            self.stdout.write(f'Urgent email: {send_or_queue(subject, body)}')
+
+        warn, self.low_charge_warned = decide_low_charge_warning(
+            reading.charge_percent, reading.charging, self.low_charge_warned)
+        if warn and setting.email_enabled:
+            percent = f'{reading.charge_percent:.0f}'
+            result = send_or_queue(
+                f'KAYVAK warning: battery at {percent}%',
+                f'Your laptop battery is at {percent}% and it is not charging. '
+                'Plug it in soon or it may switch off.')
+            self.stdout.write(f'Low battery email: {result}')

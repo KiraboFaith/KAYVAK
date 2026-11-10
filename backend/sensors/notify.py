@@ -51,3 +51,23 @@ def show_windows_toast(title, body):
         ['powershell', '-NoProfile', '-NonInteractive', '-Command', TOAST_SCRIPT],
         env=env, capture_output=True, text=True, timeout=30, check=True,
     )
+    
+LOW_CHARGE_LIMIT = 10   # warn at or below this charge when not plugged in (our own cut-off)
+LOW_CHARGE_RESET = 15   # the warning can come again only after the charge has gone above this
+
+
+def decide_low_charge_warning(charge, charging, already_warned, limit=LOW_CHARGE_LIMIT):
+    """Returns (warn_now, new_already_warned). One warning per low-battery period."""
+    if charge is None or charging is None:
+        return False, already_warned          # Windows did not tell us: say nothing
+    if charging or charge > LOW_CHARGE_RESET:
+        return False, False                   # plugged in or recovered: allow a future warning
+    if charge <= limit and not already_warned:
+        return True, True
+    return False, already_warned
+
+
+def urgent_email_text(findings):
+    """Subject and body for an email about every urgent finding (the pop-up shows only the first)."""
+    lines = [f"{f['component']}: {f['explanation']} {f['advice']}" for f in findings]
+    return TOAST_TITLE, '\n\n'.join(lines)
