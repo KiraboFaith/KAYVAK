@@ -27,7 +27,7 @@ Terminal 2, pick ONE data source:
 python manage.py collect_windows          # real readings from this Windows laptop
 python manage.py simulate_health          # demo values, any computer
 ```
-
+ 
 ## Tests
 
 ```
@@ -58,7 +58,26 @@ stored, only a short fingerprint. It cannot see keyboard, hinge, charging-port o
 
 Critical problems show a Windows pop-up (written by `collect_windows`), so the owner
 does not have to open the app. The app asks on first open, and the choice can be
-changed later in Settings. Nothing leaves the laptop.
+changed later in Settings.
+
+Email alerts are OFF by default and are sent only if the owner turns on
+"Alerts by email" in Settings. When on, the email text (problem descriptions,
+battery charge, shutdown report) is sent through the owner's own mail account.
+With email off, nothing leaves the laptop.
+
+### Email setup (optional)
+
+1. Copy `backend/.env.example` to `backend/.env` and fill in your mail address and an
+   app password (for Gmail: 2-Step Verification on, then create an app password).
+2. Never commit `backend/.env`. It is listed in `.gitignore`.
+3. Test it: `python manage.py send_test_email`
+
+## Unexpected shutdowns
+
+`python manage.py check_blackout` reads Windows' record of bad shutdowns and saves a
+plain-words report, shown on the dashboard. Windows writes the record when the laptop
+restarts, so the time shown is the restart time. If the evidence does not show the
+cause, the report says "unknown". It can run at every login through Task Scheduler.
 
 ## Requirements traceability
 
@@ -81,7 +100,7 @@ Requirement numbers come from the Requirements Elicitation Report.
 | FR-12 repair cost range | Could | not built (no technician price data) | - |
 | FR-13 text message summary | Could | not built | - |
 | NFR-01 usability | Must | not yet tested with 5 users | - |
-| NFR-02 privacy | Must | `ConsentGate.jsx`; data stays on the laptop; no ads | by eye |
+| NFR-02 privacy | Must | `ConsentGate.jsx`; data stays on the laptop unless the owner turns on email alerts; no ads | by eye |
 | NFR-03 performance (60 s) | Should | `collect_windows.py` times each check | `tests.py` (timing is saved) |
 | NFR-04 accuracy (90%) | Must | `test_accuracy.py` (cases written by us, not yet by a technician) | `test_accuracy.py` |
 | NFR-05 core checks need no internet | Should | all checks run locally | by use |
