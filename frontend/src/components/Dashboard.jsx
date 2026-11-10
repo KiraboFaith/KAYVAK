@@ -8,6 +8,7 @@ import PrintReport from './PrintReport';
 import SettingsPanel from './SettingsPanel';
 import SnapshotPanel from './SnapshotPanel';
 import KeyboardTest from './KeyboardTest';
+import BlackoutPanel from './BlackoutPanel';
 import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
@@ -146,15 +147,13 @@ function Dashboard() {
             </div>
           )}
         </section>
-
+        
+        <BlackoutPanel />
         <SnapshotPanel />      
 
         <footer className="footer">
-          KAYVAK gives advice only. It does not replace a technician.{' '}
-          {report.source === 'simulated'
-            ? 'Readings shown here are simulated.'
-            : 'Readings come from this laptop.'}
-            {report.check_seconds != null && ` Last check took ${report.check_seconds} s.`}
+          KAYVAK gives advice only. It does not replace a technician.
+          {report.check_seconds != null && ` Last check took ${report.check_seconds} s.`}
         </footer>
       </div>
 

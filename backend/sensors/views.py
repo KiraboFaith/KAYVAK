@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .comparison import compare
 from .identifiers import collect_snapshot_from_windows, snapshot_summary
-from .models import SensorReading, HealthReading, NotificationSetting, Snapshot
+from .models import BlackoutEvent, SensorReading, HealthReading, NotificationSetting, Snapshot
 from .analysis import (
     analyse, trend,
     BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
@@ -120,3 +120,12 @@ def snapshot_compare(request):
     result['before'] = snapshot_summary(before)
     result['after'] = snapshot_summary(after)
     return Response(result)
+
+@api_view(['GET'])
+def blackouts(request):
+    """The latest unexpected shutdowns found by check_blackout, newest first."""
+    return Response([
+        {'id': b.id, 'event_time': b.event_time, 'cause': b.cause,
+         'bugcheck': b.bugcheck, 'summary': b.summary}
+        for b in BlackoutEvent.objects.all()[:5]
+    ])
