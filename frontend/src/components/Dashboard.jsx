@@ -76,10 +76,11 @@ function Dashboard() {
               {report.source === 'simulated' ? 'Demo data' : 'Live readings'} ·{' '}
               {updatedAt ? updatedAt.toLocaleTimeString() : ''}
             </span>
-            <button className="btn btn-quiet" onClick={() => setShowSettings((open) => !open)}>
+            
             <button className="btn btn-quiet" onClick={() => setShowKeyboard((open) => !open)}>
               ⌨ Keyboard test
             </button>
+            <button className="btn btn-quiet" onClick={() => setShowSettings((open) => !open)}>
               ⚙ Settings
             </button>
             <button className="btn" onClick={() => window.print()}>
@@ -147,7 +148,7 @@ function Dashboard() {
             </div>
           )}
         </section>
-        
+
         <BlackoutPanel />
         <SnapshotPanel />      
 
