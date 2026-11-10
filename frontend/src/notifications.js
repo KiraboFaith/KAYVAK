@@ -18,3 +18,13 @@ export async function saveNotificationSetting(enabled) {
   if (!res.ok) throw new Error('Cannot save notification setting');
   return res.json();
 }
+
+export async function saveEmailSetting(emailEnabled) {
+  const res = await apiFetch(URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_enabled: emailEnabled }),
+  });
+  if (!res.ok) throw new Error('Cannot save email setting');
+  return res.json();
+}

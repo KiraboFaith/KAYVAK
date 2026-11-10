@@ -62,6 +62,7 @@ class NotificationSetting(models.Model):
     """The owner's notification choice. There is only ever one row (pk=1)."""
     enabled = models.BooleanField(default=False)  # True = send urgent alerts
     asked = models.BooleanField(default=False)    # True once the owner has answered the first-open question
+    email_enabled = models.BooleanField(default=False)  # True = the owner agreed to alerts by email
     updated = models.DateTimeField(auto_now=True)
 
     @classmethod

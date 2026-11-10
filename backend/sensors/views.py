@@ -67,20 +67,23 @@ def health_report(request):
         **report,
     })
 
-
 @api_view(['GET', 'POST'])
 def notification_settings(request):
-    """GET: what the owner chose. POST {"enabled": true/false}: save the choice."""
+    """GET: what the owner chose.
+    POST {"enabled": true/false} and/or {"email_enabled": true/false}: save the choice."""
     setting = NotificationSetting.current()
     if request.method == 'POST':
-        enabled = request.data.get('enabled')
-        if not isinstance(enabled, bool):
+        fields = {k: request.data[k] for k in ('enabled', 'email_enabled') if k in request.data}
+        if not fields or not all(isinstance(v, bool) for v in fields.values()):
             return Response({'detail': '"enabled" must be true or false'}, status=400)
-        setting.enabled = enabled
+        if 'enabled' in fields:
+            setting.enabled = fields['enabled']
+        if 'email_enabled' in fields:
+            setting.email_enabled = fields['email_enabled']
         setting.asked = True
         setting.save()
-    return Response({'enabled': setting.enabled, 'asked': setting.asked})
-
+    return Response({'enabled': setting.enabled, 'asked': setting.asked,
+                     'email_enabled': setting.email_enabled})
 
 @api_view(['GET', 'POST'])
 def snapshots(request):

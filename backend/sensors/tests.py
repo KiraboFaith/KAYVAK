@@ -357,18 +357,18 @@ class NotificationSettingTests(TestCase):
 
     def test_default_is_off_and_not_asked(self):
         data = APIClient().get(self.url).data
-        self.assertEqual(data, {'enabled': False, 'asked': False})
+        self.assertEqual(data, {'enabled': False, 'asked': False, 'email_enabled': False})
 
     def test_owner_can_turn_it_on_and_it_is_remembered(self):
         client = APIClient()
         response = client.post(self.url, {'enabled': True}, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(client.get(self.url).data, {'enabled': True, 'asked': True})
+        self.assertEqual(client.get(self.url).data, {'enabled': True, 'asked': True, 'email_enabled': False})
 
     def test_saying_no_counts_as_asked(self):
         client = APIClient()
         client.post(self.url, {'enabled': False}, format='json')
-        self.assertEqual(client.get(self.url).data, {'enabled': False, 'asked': True})
+        self.assertEqual(client.get(self.url).data, {'enabled': False, 'asked': True, 'email_enabled': False})
 
     def test_owner_can_turn_it_on_later(self):
         client = APIClient()
