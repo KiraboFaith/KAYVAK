@@ -41,6 +41,17 @@ DISK_DETAIL_SCRIPT = (
     "ConvertTo-Json -InputObject @($out) -Compress"
 )
 
+CHARGE_SCRIPT = (
+    "Get-CimInstance Win32_Battery | Select-Object -First 1 "
+    "EstimatedChargeRemaining, BatteryStatus | ConvertTo-Json -Compress"
+)
+
+# Win32_Battery BatteryStatus codes (from Microsoft's documentation).
+# 1 = discharging, 4 = low, 5 = critical: running on the battery.
+# 2 = on AC power, 3 = fully charged, 6-9 and 11 = charging or partly charged: plugged in.
+ON_BATTERY_CODES = {1, 4, 5}
+PLUGGED_IN_CODES = {2, 3, 6, 7, 8, 9, 11}
+
 LICENCE_SCRIPT = (
     "Get-CimInstance SoftwareLicensingProduct -Filter 'PartialProductKey IS NOT NULL' "
     "| Where-Object { $_.ApplicationId -eq '55c92734-d682-4d71-983e-d6ec3f16059f' } "
@@ -166,6 +177,24 @@ def disk_details_from_json(text):
 def read_disk_details():
     return disk_details_from_json(run_powershell(DISK_DETAIL_SCRIPT))
 
+def charge_from_json(text):
+    """Returns (charge_percent, charging). Anything Windows does not tell us stays None."""
+    if not text:
+        return None, None
+    data = json.loads(text)
+    percent = data.get('EstimatedChargeRemaining')
+    status = data.get('BatteryStatus')
+    charging = None
+    if status in ON_BATTERY_CODES:
+        charging = False
+    elif status in PLUGGED_IN_CODES:
+        charging = True
+    return (float(percent) if percent is not None else None), charging
+
+
+def read_charge():
+    return charge_from_json(run_powershell(CHARGE_SCRIPT))
+
 def read_licence():
     out = run_powershell(LICENCE_SCRIPT)
     if out == '':
@@ -198,6 +227,11 @@ class Command(BaseCommand):
 
     def collect_once(self):
         started = time.monotonic()
+        charge_percent, charging = None, None   # not every laptop reports these: not an error
+        try:
+            charge_percent, charging = read_charge()
+        except Exception as error:
+            self.stdout.write(f'Charge level not read: {error}')
         try:
             battery = read_battery()
         except Exception as error:
@@ -242,6 +276,8 @@ class Command(BaseCommand):
             licence_checked=licence_checked,
             malware_checked=malware_checked,
             check_seconds=seconds,
+            charge_percent=charge_percent,
+            charging=charging,
         )
         self.stdout.write(f'Inserted: {reading} (took {seconds} s)')
         self.save_disk_details(reading)

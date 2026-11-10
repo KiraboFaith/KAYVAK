@@ -25,6 +25,8 @@ class HealthReading(models.Model):
     licence_checked = models.BooleanField(default=True)   # False = Windows would not tell us
     malware_checked = models.BooleanField(default=True)   # False = Defender could not be read
     check_seconds = models.FloatField(null=True, blank=True)  # how long the whole check took
+    charge_percent = models.FloatField(null=True, blank=True)  # battery charge right now; None = not reported
+    charging = models.BooleanField(null=True, blank=True)      # True = on charger; None = not reported
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
