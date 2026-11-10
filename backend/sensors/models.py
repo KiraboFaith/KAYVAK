@@ -86,3 +86,15 @@ class Snapshot(models.Model):
 
     def __str__(self):
         return f'{self.label} ({self.created:%Y-%m-%d %H:%M})'
+    
+class QueuedEmail(models.Model):
+    """An email that could not be sent (no internet). It is sent later."""
+    subject = models.CharField(max_length=200)
+    body = models.TextField()
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created', 'id']
+
+    def __str__(self):
+        return f'{self.subject} (waiting since {self.created:%Y-%m-%d %H:%M})'
