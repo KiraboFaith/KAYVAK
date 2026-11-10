@@ -13,3 +13,4 @@ backend/db.sqlite3
 frontend/node_modules/
 analysis/data/
 backend/.env
+backend/.env
