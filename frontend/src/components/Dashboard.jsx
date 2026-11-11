@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { STATUS, statusOf } from '../statusStyles';
 import Heartbeat from './Heartbeat';
 import HealthRing from './HealthRing';
 import MeterBar from './MeterBar';
 import FindingCard from './FindingCard';
 import PrintReport from './PrintReport';
-import SettingsPanel from './SettingsPanel';
 import SnapshotPanel from './SnapshotPanel';
-import KeyboardTest from './KeyboardTest';
 import BlackoutPanel from './BlackoutPanel';
 import { apiFetch } from '../api';
 
@@ -18,8 +17,7 @@ function Dashboard() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchReport = () => {
@@ -76,11 +74,11 @@ function Dashboard() {
               {report.source === 'simulated' ? 'Demo data' : 'Live readings'} ·{' '}
               {updatedAt ? updatedAt.toLocaleTimeString() : ''}
             </span>
-            
-            <button className="btn btn-quiet" onClick={() => setShowKeyboard((open) => !open)}>
+
+            <button className="btn btn-quiet" onClick={() => navigate('/keyboard')}>
               ⌨ Keyboard test
             </button>
-            <button className="btn btn-quiet" onClick={() => setShowSettings((open) => !open)}>
+            <button className="btn btn-quiet" onClick={() => navigate('/settings')}>
               ⚙ Settings
             </button>
             <button className="btn" onClick={() => window.print()}>
@@ -89,8 +87,6 @@ function Dashboard() {
           </div>
         </header>
 
-        {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-        {showKeyboard && <KeyboardTest onClose={() => setShowKeyboard(false)} />}
         {error && <p className="banner">{error}</p>}
         {unchecked.length > 0 && (
           <p className="banner">
@@ -150,7 +146,7 @@ function Dashboard() {
         </section>
 
         <BlackoutPanel />
-        <SnapshotPanel />      
+        <SnapshotPanel />
 
         <footer className="footer">
           KAYVAK gives advice only. It does not replace a technician.
