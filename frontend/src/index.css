@@ -733,3 +733,34 @@ h3 {
   display: block;
   color: var(--muted);
 }
+
+/* ---------- Drive measurements ---------- */
+.drives-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+.drive-card h3 {
+  margin: 0 0 8px;
+  color: var(--text-h);
+}
+.drive-card dl {
+  margin: 14px 0 0;
+}
+.drive-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(30, 64, 175, 0.1);
+  font-size: 14px;
+}
+.drive-card dt {
+  color: var(--muted);
+}
+.drive-card dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-h);
+}
