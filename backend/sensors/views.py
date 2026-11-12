@@ -63,6 +63,18 @@ def health_report(request):
             'battery_cycles': reading.battery_cycles,
             'drive_health': reading.drive_health,
         },
+                'drives': [
+            {
+                'name': d.name,
+                'media_type': d.media_type,
+                'health_status': d.health_status,
+                'temperature': d.temperature,
+                'power_on_hours': d.power_on_hours,
+                'wear': d.wear,
+                'read_errors_uncorrected': d.read_errors_uncorrected,
+            }
+            for d in reading.disks.all().order_by('device_id')
+        ],
         'trends': trends,
         **report,
     })
