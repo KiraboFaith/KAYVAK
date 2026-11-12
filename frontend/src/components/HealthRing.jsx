@@ -1,6 +1,8 @@
 const RADIUS = 66;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+const SYMBOL = { Good: '✓', Warning: '!', Critical: '✕' };
+
 function HealthRing({ passed, total, status }) {
   const offset = CIRCUMFERENCE * (1 - passed / total);
 
@@ -25,10 +27,7 @@ function HealthRing({ passed, total, status }) {
         />
       </svg>
       <div className="ring-centre">
-        <strong>
-          {passed}/{total}
-        </strong>
-        <span>checks passed</span>
+        <strong>{SYMBOL[status]}</strong>
       </div>
     </div>
   );
