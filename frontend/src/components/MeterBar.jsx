@@ -15,7 +15,7 @@ function trendText(trend) {
 }
 
 function MeterBar({ label, caption, value, status, trend }) {
-    // null = Windows could not measure this. We say so instead of showing a made-up number.
+  // null = Windows could not measure this. We say so instead of showing a made-up number.
   if (value === null || value === undefined) {
     return (
       <div className="card meter">
@@ -26,7 +26,7 @@ function MeterBar({ label, caption, value, status, trend }) {
           <small>Not measured</small>
         </div>
         <span className="meter-caption">
-          Windows does not report this for your drive, so we are not guessing.
+          Windows gives no single health score for this drive. See the measurements below.
         </span>
       </div>
     );

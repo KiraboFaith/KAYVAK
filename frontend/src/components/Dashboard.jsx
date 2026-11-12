@@ -4,6 +4,7 @@ import { STATUS, statusOf } from '../statusStyles';
 import Heartbeat from './Heartbeat';
 import HealthRing from './HealthRing';
 import MeterBar from './MeterBar';
+import DriveDetails from './DriveDetails';
 import FindingCard from './FindingCard';
 import PrintReport from './PrintReport';
 import SnapshotPanel from './SnapshotPanel';
@@ -94,6 +95,7 @@ function Dashboard() {
             information, so we are not saying it is fine.
           </p>
         )}
+
         <section className="card hero" data-status={report.overall}>
           <HealthRing passed={passed} total={TOTAL_CHECKS} status={report.overall} />
           <div className="hero-text">
@@ -111,14 +113,18 @@ function Dashboard() {
             caption="of original capacity"
             value={report.measurements.battery_health}
             status={statusOf(report, 'Battery')}
+            trend={report.trends ? report.trends.battery : null}
           />
           <MeterBar
             label="Drive health"
             caption="of drive life left"
             value={report.measurements.drive_health}
             status={statusOf(report, 'Storage drive')}
+            trend={report.trends ? report.trends.drive : null}
           />
         </section>
+
+        <DriveDetails drives={report.drives} />
 
         <section>
           <div className="section-head">
