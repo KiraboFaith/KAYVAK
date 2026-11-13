@@ -50,12 +50,7 @@ def health_report(request):
         unchecked.append('Windows licence')
     if not reading.malware_checked:
         unchecked.append('Security')
-    # No wear percentage is not the same as no check. If Windows itself calls every drive
-    # "Healthy", that is a real answer and we show it. No drives listed, or any other word,
-    # stays "not checked".
-    drives = list(reading.disks.all().order_by('device_id'))
-    windows_says_healthy = bool(drives) and all(d.health_status == 'Healthy' for d in drives)
-    if reading.drive_health is None and not windows_says_healthy:
+    if reading.drive_health is None:
         unchecked.append('Storage drive')
 
     return Response({
@@ -68,7 +63,7 @@ def health_report(request):
             'battery_cycles': reading.battery_cycles,
             'drive_health': reading.drive_health,
         },
-        'drives': [
+                'drives': [
             {
                 'name': d.name,
                 'media_type': d.media_type,
@@ -78,7 +73,7 @@ def health_report(request):
                 'wear': d.wear,
                 'read_errors_uncorrected': d.read_errors_uncorrected,
             }
-            for d in drives
+            for d in reading.disks.all().order_by('device_id')
         ],
         'trends': trends,
         **report,

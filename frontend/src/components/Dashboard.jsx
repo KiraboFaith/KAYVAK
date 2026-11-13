@@ -1,81 +1,170 @@
-import { STATUS } from '../statusStyles';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { STATUS, statusOf } from '../statusStyles';
+import Heartbeat from './Heartbeat';
+import HealthRing from './HealthRing';
+import MeterBar from './MeterBar';
+import DriveDetails from './DriveDetails';
+import FindingCard from './FindingCard';
+import PrintReport from './PrintReport';
+import SnapshotPanel from './SnapshotPanel';
+import BlackoutPanel from './BlackoutPanel';
+import { useScans } from '../useScans';
+import { apiFetch } from '../api';
 
-// Turns the backend trend into one plain sentence for a non-technical reader.
-function trendText(trend) {
-  if (!trend) return 'Collecting readings to spot a trend...';
-  if (trend.checks_to_critical === 0) return 'Already in the critical range.';
-  if (trend.direction === 'falling') {
-    const next =
-      trend.checks_to_warning === 0
-        ? `about ${trend.checks_to_critical} checks from critical`
-        : `about ${trend.checks_to_warning} checks from a warning`;
-    return `Falling ${Math.abs(trend.change_per_check)} points per check, ${next}.`;
-  }
-  return trend.direction === 'rising' ? 'Improving.' : 'Holding steady.';
-}
+const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
+const TOTAL_CHECKS = 4; // battery, drive, licence, security
 
-function MeterBar({ label, caption, value, status, trend, fallback }) {
-  // No number from Windows. If Windows still gave a real answer (fallback, for example
-  // "Healthy"), show that. Otherwise say so instead of showing a made-up number.
-  if (value === null || value === undefined) {
-    if (fallback) {
-      return (
-        <div className="card meter" data-status={status}>
-          <div className="meter-top">
-            <span className="meter-label">{label}</span>
-            <span className="chip small" data-status={status}>
-              <span aria-hidden="true">{STATUS[status].icon}</span> {status}
-            </span>
-          </div>
-          <div className="meter-value">{fallback.value}</div>
-          <span className="meter-caption">{fallback.caption}</span>
-        </div>
-      );
-    }
+function Dashboard() {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const navigate = useNavigate();
+  const scans = useScans();
+
+  useEffect(() => {
+    const fetchReport = () => {
+      apiFetch(API_URL)
+        .then((res) => {
+          if (!res.ok) throw new Error('No data yet');
+          return res.json();
+        })
+        .then((json) => {
+          setReport(json);
+          setError(null);
+          setUpdatedAt(new Date());
+        })
+        .catch(() => setError('Cannot get the health report. Is the backend running?'));
+    };
+
+    fetchReport();
+    const interval = setInterval(fetchReport, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!report) {
     return (
-      <div className="card meter">
-        <div className="meter-top">
-          <span className="meter-label">{label}</span>
+      <div className="app">
+        <div className="bg-orbs" aria-hidden="true" />
+        <div className="splash">
+          <Heartbeat />
+          <p>{error || 'Checking your laptop...'}</p>
         </div>
-        <div className="meter-value">
-          <small>Not measured</small>
-        </div>
-        <span className="meter-caption">
-          Windows gives no single health score for this drive. See the measurements below.
-        </span>
       </div>
     );
   }
-  const percent = Math.max(0, Math.min(100, value));
+
+  const info = STATUS[report.overall];
+  const unchecked = report.unchecked || [];
+  const passed = Math.max(0, TOTAL_CHECKS - report.findings.length - unchecked.length);
 
   return (
-    <div className="card meter" data-status={status}>
-      <div className="meter-top">
-        <span className="meter-label">{label}</span>
-        <span className="chip small" data-status={status}>
-          <span aria-hidden="true">{STATUS[status].icon}</span> {status}
-        </span>
+    <div className="app">
+      <div className="bg-orbs" aria-hidden="true" />
+
+      <div className="screen-only">
+        <header className="topbar">
+          <div className="brand">
+            <Heartbeat small />
+            <div>
+              <strong>KAYVAK</strong>
+              <span>Laptop Health Check</span>
+            </div>
+          </div>
+          <div className="topbar-actions">
+            <span className="live">
+              <i className="dot" />
+              {report.source === 'simulated' ? 'Demo data' : 'Live readings'} ·{' '}
+              {updatedAt ? updatedAt.toLocaleTimeString() : ''}
+            </span>
+
+            <button className="btn btn-quiet" onClick={() => navigate('/keyboard')}>
+              ⌨ Keyboard test
+            </button>
+            <button className="btn btn-quiet" onClick={() => navigate('/settings')}>
+              ⚙ Settings
+            </button>
+            <button className="btn" onClick={() => window.print()}>
+              🖨 Print report
+            </button>
+          </div>
+        </header>
+
+        {error && <p className="banner">{error}</p>}
+        {unchecked.length > 0 && (
+          <p className="banner">
+            Not checked on this laptop: {unchecked.join(', ')}. Windows did not give us this
+            information, so we are not saying it is fine.
+          </p>
+        )}
+
+        <section className="card hero" data-status={report.overall}>
+          <HealthRing passed={passed} total={TOTAL_CHECKS} status={report.overall} />
+          <div className="hero-text">
+            <span className="chip" data-status={report.overall}>
+              <span aria-hidden="true">{info.icon}</span> {report.overall}
+            </span>
+            <h1>{info.headline}</h1>
+            <p>{info.message}</p>
+          </div>
+        </section>
+
+        <section className="meters">
+          <MeterBar
+            label="Battery health"
+            caption="of original capacity"
+            value={report.measurements.battery_health}
+            status={statusOf(report, 'Battery')}
+            trend={report.trends ? report.trends.battery : null}
+          />
+          <MeterBar
+            label="Drive health"
+            caption="of drive life left"
+            value={report.measurements.drive_health}
+            status={statusOf(report, 'Storage drive')}
+            trend={report.trends ? report.trends.drive : null}
+          />
+        </section>
+
+        <DriveDetails drives={report.drives} />
+
+        <section>
+          <div className="section-head">
+            <h2>What we found</h2>
+            <span className="tag">
+              {report.findings.length === 0
+                ? 'No problems'
+                : `${report.findings.length} ${report.findings.length === 1 ? 'problem' : 'problems'}`}
+            </span>
+          </div>
+
+          {report.findings.length === 0 ? (
+            <div className="card all-good" data-status="Good">
+              <span className="all-good-icon">✓</span>
+              <h3>No problems found</h3>
+              <p>Your laptop looks healthy. We will keep checking.</p>
+            </div>
+          ) : (
+            <div className="findings-grid">
+              {report.findings.map((finding, i) => (
+                <FindingCard key={finding.component} finding={finding} index={i} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <BlackoutPanel />
+        <SnapshotPanel scans={scans} />
+
+        <footer className="footer">
+          KAYVAK gives advice only. It does not replace a technician.
+          {report.check_seconds != null && ` Last check took ${report.check_seconds} s.`}
+        </footer>
       </div>
-      <div className="meter-value">
-        {Number(value).toFixed(1)}
-        <small>%</small>
-      </div>
-      <div
-        className="meter-track"
-        role="progressbar"
-        aria-valuenow={Math.round(percent)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={label}
-      >
-        <div className="meter-fill" style={{ width: `${percent}%` }} />
-      </div>
-      <span className="meter-caption">{caption}</span>
-      <span className="meter-trend" data-direction={trend ? trend.direction : 'none'}>
-        {trendText(trend)}
-      </span>
+
+      <PrintReport report={report} scans={scans} />
     </div>
   );
 }
 
-export default MeterBar;
+export default Dashboard;
