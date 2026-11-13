@@ -14,9 +14,24 @@ function trendText(trend) {
   return trend.direction === 'rising' ? 'Improving.' : 'Holding steady.';
 }
 
-function MeterBar({ label, caption, value, status, trend }) {
-  // null = Windows could not measure this. We say so instead of showing a made-up number.
+function MeterBar({ label, caption, value, status, trend, fallback }) {
+  // No number from Windows. If we still have a real answer from Windows (fallback, for
+  // example "Healthy"), show that. Otherwise say so instead of showing a made-up number.
   if (value === null || value === undefined) {
+    if (fallback) {
+      return (
+        <div className="card meter" data-status={status}>
+          <div className="meter-top">
+            <span className="meter-label">{label}</span>
+            <span className="chip small" data-status={status}>
+              <span aria-hidden="true">{STATUS[status].icon}</span> {status}
+            </span>
+          </div>
+          <div className="meter-value">{fallback.value}</div>
+          <span className="meter-caption">{fallback.caption}</span>
+        </div>
+      );
+    }
     return (
       <div className="card meter">
         <div className="meter-top">

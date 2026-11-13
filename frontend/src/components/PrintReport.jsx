@@ -122,7 +122,9 @@ function PrintReport({ report, scans }) {
       check: 'Storage drive health',
       value: unchecked.includes('Storage drive')
         ? 'Not measured (Windows does not report it for this drive)'
-        : `${report.measurements.drive_health}% of drive life left`,
+        : report.measurements.drive_health == null
+          ? 'Windows reports every drive as Healthy (no life-left percentage available)'
+          : `${report.measurements.drive_health}% of drive life left`,
       result: unchecked.includes('Storage drive') ? 'Not checked' : statusOf(report, 'Storage drive'),
     },
     {
