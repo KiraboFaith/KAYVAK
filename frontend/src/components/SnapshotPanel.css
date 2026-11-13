@@ -10,12 +10,18 @@
   gap: 0.6rem;
   margin: 0.8rem 0;
 }
+
+.snap-step {
+  margin: 1rem 0 1.4rem;
+}
+.snap-heading {
+  margin: 1.4rem 0 0.4rem;
+}
 .snap-scans {
-  list-style: none;
-  padding: 0;
   margin: 0.4rem 0 0.8rem;
   font-size: 0.92rem;
 }
+
 .snap-warn {
   color: var(--warn);
 }

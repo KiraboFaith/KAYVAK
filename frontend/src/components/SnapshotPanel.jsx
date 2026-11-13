@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
 import './SnapshotPanel.css';
-import { listSnapshots, takeSnapshot, compareSnapshots } from '../snapshots';
 
 const PART_NAMES = {
   disks: 'Storage drive',
@@ -12,65 +10,51 @@ const PART_NAMES = {
 const RESULT_TEXT = { unchanged: 'Unchanged', changed: 'Changed', not_checked: 'Not checked' };
 const ITEM_TEXT = { unchanged: 'Same', removed: 'Removed', added: 'Added', changed: 'Changed' };
 
-// The list is newest first. Compare the newest "before" with the first "after" taken after it.
-function pickScans(snapshots) {
-  const before = snapshots.find((s) => s.label === 'before');
-  if (!before) return {};
-  const after = snapshots.find((s) => s.label === 'after' && s.id > before.id);
-  return { before, after };
-}
-
 function when(iso) {
   return new Date(iso).toLocaleString();
 }
 
-function SnapshotPanel() {
-  const [snapshots, setSnapshots] = useState([]);
-  const [busy, setBusy] = useState(null); // "before", "after" or null
-  const [error, setError] = useState(null);
-  const [loaded, setLoaded] = useState(null); // { beforeId, afterId, data }
+// What one scan found, part by part.
+function ScanResults({ detail }) {
+  if (!detail) return <p className="snap-note">Loading what the scan found...</p>;
+  return (
+    <table className="snap-table">
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>What the scan found</th>
+        </tr>
+      </thead>
+      <tbody>
+        {detail.components.map((part) => (
+          <tr key={part.component}>
+            <td>{part.component}</td>
+            <td>
+              {part.status === 'not_checked' && (
+                <p className="snap-flag">Could not be read in this scan.</p>
+              )}
+              {part.status === 'read' && part.items.length === 0 && (
+                <p className="snap-item">Nothing found.</p>
+              )}
+              {part.items.map((item, i) => (
+                <p key={i} className="snap-item">
+                  {item.label}
+                  {item.detail && <small> {item.detail}</small>}
+                </p>
+              ))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
-  const reload = () =>
-    listSnapshots()
-      .then((list) => {
-        setSnapshots(list);
-        setError(null);
-      })
-      .catch((e) => setError(e.message));
-
-  useEffect(() => {
-    reload();
-  }, []);
-
-  const { before, after } = pickScans(snapshots);
-  const beforeId = before && before.id;
-  const afterId = after && after.id;
-
-  useEffect(() => {
-    if (!beforeId || !afterId) return;
-    compareSnapshots(beforeId, afterId)
-      .then((data) => setLoaded({ beforeId, afterId, data }))
-      .catch((e) => setError(e.message));
-  }, [beforeId, afterId]);
-
-  // Only show a comparison that belongs to the two scans currently picked.
-  const comparison =
-    loaded && loaded.beforeId === beforeId && loaded.afterId === afterId ? loaded.data : null;
-
-  const scan = async (label) => {
-    setBusy(label);
-    setError(null);
-    try {
-      await takeSnapshot(label);
-      await reload();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(null);
-    }
-  };
+function SnapshotPanel({ scans }) {
+  const { before, after, beforeDetail, afterDetail, comparison, busy, error, scan } = scans;
 
   const latest = (label) => (label === 'before' ? before : after);
+  const detailOf = (label) => (label === 'before' ? beforeDetail : afterDetail);
   const unread = (snap) => (snap ? snap.unchecked.map((p) => PART_NAMES[p]) : []);
 
   return (
@@ -89,38 +73,38 @@ function SnapshotPanel() {
         backend in an administrator terminal so drive serials can be read.
       </p>
 
-      <div className="snap-actions">
-        {['before', 'after'].map((label, i) => (
-          <button
-            key={label}
-            className="btn"
-            disabled={busy !== null}
-            onClick={() => scan(label)}
-          >
-            {busy === label ? 'Scanning... (about 20 seconds)' : `${i + 1}. Scan ${label} the repair`}
-          </button>
-        ))}
-      </div>
-
       {error && <p className="banner">{error}</p>}
 
-      <ul className="snap-scans">
-        {['before', 'after'].map((label) => {
-          const snap = latest(label);
-          return (
-            <li key={label}>
+      {['before', 'after'].map((label, i) => {
+        const snap = latest(label);
+        return (
+          <div className="snap-step" key={label}>
+            <div className="snap-actions">
+              <button
+                className="btn"
+                disabled={busy !== null || (label === 'after' && !before)}
+                onClick={() => scan(label)}
+              >
+                {busy === label
+                  ? 'Scanning... (about 20 seconds)'
+                  : `${i + 1}. Scan ${label} the repair`}
+              </button>
+            </div>
+            <p className="snap-scans">
               <strong>{label === 'before' ? 'Before scan' : 'After scan'}:</strong>{' '}
-              {snap ? when(snap.created) : 'not taken yet'}
+              {snap ? when(snap.created) : label === 'after' && !before ? 'take the before scan first' : 'not taken yet'}
               {unread(snap).length > 0 && (
                 <span className="snap-warn"> Could not read: {unread(snap).join(', ')}.</span>
               )}
-            </li>
-          );
-        })}
-      </ul>
+            </p>
+            {snap && <ScanResults detail={detailOf(label)} />}
+          </div>
+        );
+      })}
 
       {comparison && (
         <>
+          <h3 className="snap-heading">3. Comparison</h3>
           <div className="snap-summary" data-changed={comparison.changed.length > 0}>
             {comparison.changed.length === 0
               ? 'No part changed between the two scans.'

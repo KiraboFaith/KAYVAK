@@ -9,6 +9,7 @@ import FindingCard from './FindingCard';
 import PrintReport from './PrintReport';
 import SnapshotPanel from './SnapshotPanel';
 import BlackoutPanel from './BlackoutPanel';
+import { useScans } from '../useScans';
 import { apiFetch } from '../api';
 
 const API_URL = 'http://127.0.0.1:8000/api/sensors/health/';
@@ -19,6 +20,7 @@ function Dashboard() {
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
   const navigate = useNavigate();
+  const scans = useScans();
 
   useEffect(() => {
     const fetchReport = () => {
@@ -152,7 +154,7 @@ function Dashboard() {
         </section>
 
         <BlackoutPanel />
-        <SnapshotPanel />
+        <SnapshotPanel scans={scans} />
 
         <footer className="footer">
           KAYVAK gives advice only. It does not replace a technician.
