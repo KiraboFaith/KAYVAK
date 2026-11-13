@@ -261,3 +261,54 @@ def compare(before, after):
         'not_checked': [c['component'] for c in components if c['status'] == 'not_checked'],
         'limits': LIMITS,
     }
+
+def _read(name, items):
+    """One part of a single scan that was read. items can be empty (for example, no screen found)."""
+    return {'component': name, 'status': 'read', 'items': items}
+
+
+def _not_read(name):
+    return {'component': name, 'status': 'not_checked', 'items': []}
+
+
+def _list_part(name, found, label):
+    if found is None:
+        return _not_read(name)
+    return _read(name, [{'label': label(x), 'detail': ''} for x in found])
+
+
+def describe_snapshot(data):
+    """What one scan found, in plain words, in the same order as compare().
+
+    No serial fingerprints, so it is safe to show. A part that could not be read in this scan
+    is "not_checked". We never show it as an empty list of parts.
+    """
+    battery = data.get('battery')
+    windows = data.get('windows')
+
+    if battery is None:
+        battery_part = _not_read('Battery')
+    else:
+        detail = []
+        if battery.get('cycle_count') is not None:
+            detail.append(f'{battery["cycle_count"]} charge cycles.')
+        if battery.get('manufacture_date'):
+            detail.append(f'Made {battery["manufacture_date"]}.')
+        battery_part = _read('Battery', [
+            {'label': battery.get('name') or 'Battery', 'detail': ' '.join(detail)}])
+
+    if windows is None or not windows.get('install_date'):
+        windows_part = _not_read('Windows install')
+    else:
+        detail = f'Installed {windows["install_date"]}.'
+        if windows.get('build'):
+            detail += f' Build {windows["build"]}.'
+        windows_part = _read('Windows install', [{'label': 'Windows', 'detail': detail}])
+
+    return [
+        _list_part('Storage drive', data.get('disks'), disk_label),
+        _list_part('Memory (RAM)', data.get('ram'), ram_label),
+        battery_part,
+        _list_part('Screen', data.get('display'), display_label),
+        windows_part,
+    ]

@@ -2,7 +2,7 @@ import copy
 
 from django.test import SimpleTestCase
 
-from .comparison import compare
+from .comparison import compare, describe_snapshot
 
 
 def laptop():
@@ -127,3 +127,30 @@ class HonestyTests(SimpleTestCase):
     def test_snapshots_from_before_a_part_existed_do_not_crash(self):
         result = compare({}, {})
         self.assertEqual(len(result['not_checked']), 5)
+        
+class DescribeSnapshotTests(SimpleTestCase):
+    def test_every_part_is_listed_in_the_same_order_as_the_comparison(self):
+        parts = describe_snapshot(laptop())
+        self.assertEqual(
+            [p['component'] for p in parts],
+            [c['component'] for c in compare(laptop(), laptop())['components']],
+        )
+        self.assertTrue(all(p['status'] == 'read' for p in parts))
+
+    def test_parts_are_described_in_plain_words(self):
+        parts = {p['component']: p for p in describe_snapshot(laptop())}
+        self.assertEqual(len(parts['Memory (RAM)']['items']), 2)
+        self.assertIn('8 GB', parts['Memory (RAM)']['items'][0]['label'])
+        self.assertIn('412 charge cycles', parts['Battery']['items'][0]['detail'])
+        self.assertIn('2026-01-15', parts['Windows install']['items'][0]['detail'])
+
+    def test_a_part_that_could_not_be_read_is_not_checked(self):
+        data = dict(laptop(), ram=None, battery=None)
+        parts = {p['component']: p for p in describe_snapshot(data)}
+        self.assertEqual(parts['Memory (RAM)']['status'], 'not_checked')
+        self.assertEqual(parts['Battery']['status'], 'not_checked')
+        self.assertEqual(parts['Memory (RAM)']['items'], [])
+
+    def test_serial_fingerprints_are_never_included(self):
+        self.assertNotIn('serial_hash', str(describe_snapshot(laptop())))
+        self.assertNotIn('bat1', str(describe_snapshot(laptop())))
