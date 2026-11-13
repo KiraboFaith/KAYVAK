@@ -69,3 +69,30 @@ class SnapshotCompareApiTests(TestCase):
     def test_unknown_snapshot_is_404(self):
         one = self.make('before')
         self.assertEqual(client().get(self.url, {'before': one.id, 'after': 9999}).status_code, 404)
+
+class SnapshotDetailApiTests(TestCase):
+    def url(self, pk):
+        return f'/api/sensors/snapshots/{pk}/'
+
+    def test_detail_shows_what_the_scan_found(self):
+        snap = Snapshot.objects.create(label='before', data=dict(laptop(), errors={}))
+        data = client().get(self.url(snap.id)).data
+        self.assertEqual(data['label'], 'before')
+        self.assertEqual(
+            [c['component'] for c in data['components']],
+            ['Storage drive', 'Memory (RAM)', 'Battery', 'Screen', 'Windows install'],
+        )
+        self.assertNotIn('serial_hash', str(data))
+
+    def test_detail_marks_a_part_that_could_not_be_read(self):
+        snap = Snapshot.objects.create(label='after', data=dict(laptop(), ram=None, errors={'ram': 'denied'}))
+        data = client().get(self.url(snap.id)).data
+        ram = next(c for c in data['components'] if c['component'] == 'Memory (RAM)')
+        self.assertEqual(ram['status'], 'not_checked')
+
+    def test_unknown_scan_is_404(self):
+        self.assertEqual(client().get(self.url(9999)).status_code, 404)
+
+    def test_detail_needs_the_header(self):
+        snap = Snapshot.objects.create(label='before', data=dict(laptop(), errors={}))
+        self.assertEqual(_APIClient().get(self.url(snap.id)).status_code, 403)

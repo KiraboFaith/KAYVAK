@@ -8,4 +8,5 @@ urlpatterns = [
     path('blackouts/', views.blackouts, name='blackouts'),
     path('snapshots/', views.snapshots, name='snapshots'),
     path('snapshots/compare/', views.snapshot_compare, name='snapshot-compare'),
+    path('snapshots/<int:pk>/', views.snapshot_detail, name='snapshot-detail'),
 ]

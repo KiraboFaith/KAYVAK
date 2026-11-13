@@ -2,7 +2,7 @@ import platform
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .comparison import compare
+from .comparison import compare, describe_snapshot
 from .identifiers import collect_snapshot_from_windows, snapshot_summary
 from .models import BlackoutEvent, SensorReading, HealthReading, NotificationSetting, Snapshot
 from .analysis import (
@@ -113,6 +113,15 @@ def snapshots(request):
         return Response(snapshot_summary(snapshot), status=201)
     return Response([snapshot_summary(s) for s in Snapshot.objects.all()[:20]])
 
+@api_view(['GET'])
+def snapshot_detail(request, pk):
+    """GET: what one saved scan found, part by part (no serial fingerprints)."""
+    snapshot = Snapshot.objects.filter(pk=pk).first()
+    if snapshot is None:
+        return Response({'detail': 'That scan does not exist.'}, status=404)
+    result = snapshot_summary(snapshot)
+    result['components'] = describe_snapshot(snapshot.data)
+    return Response(result)
 
 @api_view(['GET'])
 def snapshot_compare(request):
