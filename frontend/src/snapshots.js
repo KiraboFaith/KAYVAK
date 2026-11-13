@@ -27,3 +27,8 @@ export async function compareSnapshots(beforeId, afterId) {
   const res = await apiFetch(`${BASE}compare/?before=${beforeId}&after=${afterId}`);
   return readJson(res, 'Cannot compare the scans');
 }
+
+// What one saved scan found, part by part.
+export async function getSnapshot(id) {
+  return readJson(await apiFetch(`${BASE}${id}/`), 'Cannot read that scan');
+}
