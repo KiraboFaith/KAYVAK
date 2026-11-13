@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from django.conf import settings
@@ -178,11 +179,18 @@ def collect_snapshot(run, read_battery_report):
             data[name] = None
             data['errors'][name] = str(error)[:200]
 
-    read('disks', lambda: disks_from_json(run(DISK_SCRIPT)))
-    read('ram', lambda: ram_from_json(run(RAM_SCRIPT)))
-    read('battery', lambda: battery_identity_from_xml(read_battery_report()))
-    read('display', lambda: displays_from_json(run(DISPLAY_SCRIPT)))
-    read('windows', lambda: windows_from_json(run(OS_SCRIPT)))
+    # The five reads do not depend on each other and mostly wait on Windows, so they run
+    # at the same time. The scan then takes about as long as the slowest one, not the sum.
+    jobs = {
+        'disks': lambda: disks_from_json(run(DISK_SCRIPT)),
+        'ram': lambda: ram_from_json(run(RAM_SCRIPT)),
+        'battery': lambda: battery_identity_from_xml(read_battery_report()),
+        'display': lambda: displays_from_json(run(DISPLAY_SCRIPT)),
+        'windows': lambda: windows_from_json(run(OS_SCRIPT)),
+    }
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+        for name, getter in jobs.items():
+            pool.submit(read, name, getter)   # leaving the "with" waits for all five
     return data
 
 

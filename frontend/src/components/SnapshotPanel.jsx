@@ -86,7 +86,7 @@ function SnapshotPanel({ scans }) {
                 onClick={() => scan(label)}
               >
                 {busy === label
-                  ? 'Scanning... (about 20 seconds)'
+                  ? 'Scanning...'
                   : `${i + 1}. Scan ${label} the repair`}
               </button>
             </div>
