@@ -87,6 +87,20 @@ def _both(name, before, after):
         return _not_checked(name, f'Could not be read in {which}, so we cannot say whether it changed.')
     return None
 
+def disk_label(d):
+    size = f'{d["size_gb"]} GB' if d.get('size_gb') else 'size unknown'
+    return f'{d["model"]} ({d["media_type"] or "type unknown"}, {size})'
+
+
+def ram_label(r):
+    size = f'{r["capacity_gb"]} GB' if r.get('capacity_gb') else 'size unknown'
+    part = r['part_number'] or 'part number unknown'
+    return f'{size} {part} (slot {r["slot"] or "?"})'
+
+
+def display_label(s):
+    year = f' ({s["year"]})' if s.get('year') else ''
+    return f'{s["manufacturer"]} {s["product_code"]}{year}'.strip() or 'Screen'
 
 def compare_disks(before, after):
     name = 'Storage drive'
@@ -94,16 +108,14 @@ def compare_disks(before, after):
     if missing:
         return missing
 
-    def label(d):
-        size = f'{d["size_gb"]} GB' if d.get('size_gb') else 'size unknown'
-        return f'{d["model"]} ({d["media_type"] or "type unknown"}, {size})'
+    
 
     pairs, removed, added = _match(
         before, after,
         strong=lambda d: d.get('serial_hash'),
         weak=lambda d: (d['model'], d.get('size_gb')),
     )
-    return _result(name, _items(pairs, removed, added, label))
+    return _result(name, _items(pairs, removed, added, disk_label))
 
 
 def compare_ram(before, after):
@@ -132,7 +144,7 @@ def compare_ram(before, after):
         )
     elif total_after > total_before:
         notes.append(f'Total memory went up ({total_before} GB to {total_after} GB).')
-    return _result(name, _items(pairs, removed, added, label), notes)
+    return _result(name, _items(pairs, removed, added, ram_label), notes)
 
 
 def compare_battery(before, after):
@@ -206,7 +218,7 @@ def compare_display(before, after):
     notes = []
     if removed or added:
         notes.append('Disconnect any external screens before both scans, or they will show up as changes.')
-    return _result(name, _items(pairs, removed, added, label), notes)
+    return _result(name, _items(pairs, removed, added, display_label), notes)
 
 
 def compare_windows(before, after):
