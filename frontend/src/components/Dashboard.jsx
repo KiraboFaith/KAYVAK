@@ -162,7 +162,7 @@ function Dashboard() {
         </footer>
       </div>
 
-      <PrintReport report={report} />
+      <PrintReport report={report} scans={scans} />
     </div>
   );
 }
