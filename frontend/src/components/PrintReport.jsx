@@ -1,9 +1,112 @@
 import { statusOf } from '../statusStyles';
 import { getCareTips } from '../careTips';
 
+const RESULT_TEXT = { unchanged: 'Unchanged', changed: 'Changed', not_checked: 'Not checked' };
+const ITEM_TEXT = { unchanged: 'Same', removed: 'Removed', added: 'Added', changed: 'Changed' };
+
+// What one scan found, for the printed page.
+function ScanTable({ title, snap, detail }) {
+  return (
+    <>
+      <h3>
+        {title}
+        {snap ? `: ${new Date(snap.created).toLocaleString()}` : ': not taken'}
+      </h3>
+      {snap && !detail && <p>Loading what the scan found...</p>}
+      {detail && (
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>What the scan found</th>
+            </tr>
+          </thead>
+          <tbody>
+            {detail.components.map((part) => (
+              <tr key={part.component}>
+                <td>{part.component}</td>
+                <td>
+                  {part.status === 'not_checked' && 'Could not be read in this scan.'}
+                  {part.status === 'read' && part.items.length === 0 && 'Nothing found.'}
+                  {part.items.map((item, i) => (
+                    <div key={i}>
+                      {item.label}
+                      {item.detail && ` ${item.detail}`}
+                    </div>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
+}
+
+// The before and after scans and what changed between them (empty until a scan is taken).
+function RepairEvidence({ scans }) {
+  const { before, after, beforeDetail, afterDetail, comparison } = scans;
+  return (
+    <>
+      <h2>Before and after a repair</h2>
+      {!before && <p>No scan has been taken, so there is no repair evidence yet.</p>}
+      {before && (
+        <ScanTable title="Before scan" snap={before} detail={beforeDetail} />
+      )}
+      {before && !after && <p>The after scan has not been taken yet.</p>}
+      {after && <ScanTable title="After scan" snap={after} detail={afterDetail} />}
+      {comparison && (
+        <>
+          <h3>Comparison</h3>
+          <p>
+            <strong>
+              {comparison.changed.length === 0
+                ? 'No part changed between the two scans.'
+                : `Changed: ${comparison.changed.join(', ')}.`}
+            </strong>
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Part</th>
+                <th>Result</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.components.map((part) => (
+                <tr key={part.component}>
+                  <td>{part.component}</td>
+                  <td>{RESULT_TEXT[part.status]}</td>
+                  <td>
+                    <div>{part.summary}</div>
+                    {part.items.map((item, i) => (
+                      <div key={i}>
+                        {ITEM_TEXT[item.state]}: {item.label}
+                        {item.detail && ` ${item.detail}`}
+                      </div>
+                    ))}
+                    {part.notes.map((note) => (
+                      <div key={note}>
+                        <strong>{note}</strong>
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p>{comparison.limits}</p>
+        </>
+      )}
+    </>
+  );
+}
+
 // FR-10: a printable report a technician can use to verify the findings.
 // It is hidden on screen and only appears when the page is printed.
-function PrintReport({ report }) {
+function PrintReport({ report, scans }) {
   const printed = new Date().toLocaleString();
   const taken = new Date(report.timestamp).toLocaleString();
   const licenceStatus = statusOf(report, 'Windows licence');
@@ -44,7 +147,7 @@ function PrintReport({ report }) {
       <p className="report-meta">
         Printed: {printed} | Reading taken: {taken}
       </p>
-            <p className="report-meta">
+      <p className="report-meta">
         {report.source === 'simulated'
           ? 'Note: this reading is simulated demo data.'
           : 'Reading taken from this laptop by the KAYVAK Windows collector.'}
@@ -101,6 +204,8 @@ function PrintReport({ report }) {
           </div>
         ))
       )}
+
+      <RepairEvidence scans={scans} />
 
       <div className="report-sign">
         <p>
