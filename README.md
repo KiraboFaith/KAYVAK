@@ -3,7 +3,8 @@
 A laptop health monitoring and fault-detection system for non-technical laptop owners.
 It gives advice only. It never repairs anything. It can read real values from a Windows
 laptop (`collect_windows`) or use simulated demo values (`simulate_health`). The dashboard
-and the printed report always say which one the reading came from. This version uses simulated readings.
+and the printed report always say which one the reading came from. Use `collect_windows` for
+real readings and `simulate_health` only for demos.
 
 ## Run it
 
@@ -87,7 +88,7 @@ Requirement numbers come from the Requirements Elicitation Report.
 |---|---|---|---|
 | FR-01 overall status | Must | `analysis.py` (`analyse`) | `tests.py` |
 | FR-02 battery health | Must | `collect_windows.py` (`read_battery`), `analysis.py` | `tests.py` |
-| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` (health status, wear and uncorrected read errors) | `tests.py` |
+| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` (health status, wear and uncorrected read errors; wear is ignored on hard drives, which always report 0) | `tests.py` |
 | FR-04 software or hardware, malware | Must | `analysis.py` (`type`), `read_malware` | `tests.py` |
 | FR-05 licence alert | Should | `read_licence`, `analysis.py` | `tests.py` |
 | FR-06 plain language | Must | `analysis.py` (`explanation`) | `tests.py` |
