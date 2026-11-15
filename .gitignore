@@ -4,13 +4,24 @@ ml-model/data/
 ml-model/.ipynb_checkpoints/
 *.pkl
 *.joblib
+
+# Python
 __pycache__/
 *.pyc
 
-# Existing (keep these if already there)
+# Backend (local database and secrets are never committed)
 backend/venv/
 backend/db.sqlite3
+backend/.env
+
+# Frontend
 frontend/node_modules/
+
+# Analysis (large Backblaze data stays on your laptop)
 analysis/data/
-backend/.env
-backend/.env
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
