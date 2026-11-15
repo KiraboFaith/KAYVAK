@@ -8,27 +8,54 @@ real readings and `simulate_health` only for demos.
 
 ## Run it
 
-Backend (in `backend`, two terminals). Terminal 1:
+You need Python 3 and Node.js. Open three terminals.
+
+Terminal 1, backend (in `backend`):
 
 ```
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 127.0.0.1:8000
-
 ```
 
-Frontend (in `frontend`, a third terminal):
-
-    npm install
-    npm run dev
-
-Terminal 2, pick ONE data source:
+Terminal 2, data source (in `backend`). Pick ONE:
 
 ```
 python manage.py collect_windows          # real readings from this Windows laptop
 python manage.py simulate_health          # demo values, any computer
 ```
- 
+
+Terminal 3, frontend (in `frontend`):
+
+```
+npm install
+npm run dev
+```
+
+Then open http://localhost:5173 in your browser.
+
+## Project structure
+
+```
+analysis/    Scripts that study the Backblaze drive-failure data (scan, prepare, train_test, export_summary)
+backend/     Django REST API; the `sensors` app holds the checks, analysis and management commands
+frontend/    React + Vite dashboard (see frontend/README.md)
+```
+
+## API
+
+All endpoints are under `/api/sensors/` and need the `X-Kayvak-Client: dashboard` header.
+
+| Endpoint | Purpose |
+|---|---|
+| `data/` | Sensor readings |
+| `health/` | Laptop health readings and report |
+| `notifications/` | Notification settings |
+| `blackouts/` | Unexpected shutdown reports |
+| `snapshots/` | Before/after repair scans |
+| `snapshots/compare/` | Compare two scans |
+| `snapshots/<id>/` | One scan |
+
 ## Tests
 
 ```
