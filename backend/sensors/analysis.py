@@ -1,3 +1,5 @@
+from .disk_trends import disk_error_growth
+
 # Cut-offs. Battery = % of original capacity left, drive = % of drive life left.
 # These are our own heuristics, so each one says where it comes from.
 # Battery 80: the commonly used "battery is worn" reference point (FYP feedback document,
@@ -98,19 +100,48 @@ def analyse(reading):
         })
 
     # FR-03 (early warning): uncorrected read errors mean the drive failed to read data back.
-    # Any at all is a real signal, so this alone gives a Warning (if health already flagged
-    # the drive, that finding stays and this one is skipped).
+    # - Any at all is a real signal: Warning.
+    # - Errors still being added over the last days mean the drive is failing now: Critical.
+    #   This rule is our own heuristic. TODO: test it against real failing drives before
+    #   claiming it in the write-up. We have not checked that Windows' counter matches the
+    #   SMART attributes used in the Backblaze data.
+    # One finding per component: if the health score already flagged the drive, the growth
+    # finding replaces it (it says more); a Warning-level error finding never replaces it.
     errors = uncorrected_read_errors(reading)
-    if errors > 0 and not level:
+    growth = disk_error_growth(reading) if errors > 0 else None
+    growing = growth is not None and growth['increase'] > 0
+    if errors > 0 and (growing or not level):
+        if growing:
+            findings = [f for f in findings if f['component'] != 'Storage drive']
+            evidence = (
+                f'Windows counted {errors} uncorrected read errors in total. '
+                f'{growth["increase"]} were added in the last {growth["days"]:g} days '
+                f'(about {growth["per_day"]:g} a day) on {growth["name"]}.'
+            )
+        else:
+            evidence = f'Windows counted {errors} uncorrected read errors on this drive.'
+            if growth is not None:
+                evidence += f' None were added in the last {growth["days"]:g} days.'
         findings.append({
             'component': 'Storage drive',
-            'status': 'Warning',
+            'status': 'Critical' if growing else 'Warning',
             'type': 'hardware',
-            'explanation': 'Your storage drive has failed to read some data correctly.',
-            'evidence': f'Windows counted {errors} uncorrected read errors on this drive.',
-            'advice': 'Back up your important files now and check again later. If the number grows, replace the drive.',
+            'explanation': (
+                'Your storage drive keeps failing to read data correctly, and it is getting worse.'
+                if growing else
+                'Your storage drive has failed to read some data correctly.'
+            ),
+            'evidence': evidence,
+            'advice': (
+                'Back up your important files today, then see a technician. Do not wait.'
+                if growing else
+                'Back up your important files now and check again later. If the number grows, replace the drive.'
+            ),
             'repair': REPAIR_MINOR,
             'repair_note': (
+                'Errors that keep growing justify replacing the drive. '
+                'It is a part swap, not a major repair.'
+                if growing else
                 'If the errors keep growing, replacing the drive is justified. '
                 'It is a part swap, not a major repair.'
             ),

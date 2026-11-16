@@ -72,7 +72,8 @@ python manage.py test sensors
 - Knowledge: the limits and every past reading are kept in the database. Trends use daily
   averages over the last 30 days and are only shown once there are readings from 5 different
   days, so they are in days, not in "checks". For a demo, `python manage.py simulate_health --history 14`
-  first adds 14 days of made-up history.
+  first adds 14 days of made-up history. Uncorrected disk read errors are compared over the
+  last 7 days: errors still being added make the drive finding Critical.
 
 ## Before and after a repair (snapshot)
 
@@ -118,7 +119,7 @@ Requirement numbers come from the Requirements Elicitation Report.
 |---|---|---|---|
 | FR-01 overall status | Must | `analysis.py` (`analyse`) | `tests.py` |
 | FR-02 battery health | Must | `collect_windows.py` (`read_battery`), `analysis.py` | `tests.py` |
-| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` (health status, wear and uncorrected read errors; wear is ignored on hard drives, which always report 0) | `tests.py` |
+| FR-03 drive health | Must | `collect_windows.py` (`read_drive`), `analysis.py` (health status, wear and uncorrected read errors; wear is ignored on hard drives, which always report 0), `disk_trends.py` (error growth per day) | `tests.py`, `test_disk_errors.py` |
 | FR-04 software or hardware, malware | Must | `analysis.py` (`type`), `read_malware` | `tests.py` |
 | FR-05 licence alert | Should | `read_licence`, `analysis.py` | `tests.py` |
 | FR-06 plain language | Must | `analysis.py` (`explanation`) | `tests.py` |
