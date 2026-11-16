@@ -331,6 +331,18 @@ class HealthEndpointTests(TestCase):
         self.assertEqual(APIClient().get(self.url).data['unchecked'], [])
 
 
+class SimulatedHistoryTests(TestCase):
+    def test_seeded_history_gives_a_falling_trend_in_the_report(self):
+        from io import StringIO
+        from sensors.management.commands.simulate_health import Command
+        command = Command(stdout=StringIO())
+        command.seed_history(14)
+        self.assertEqual(HealthReading.objects.count(), 14)
+        trend_data = APIClient().get('/api/sensors/health/').data['trends']['battery']
+        self.assertEqual(trend_data['direction'], 'falling')
+        self.assertEqual(trend_data['based_on_days'], 13)
+
+
 class CollectorTests(TestCase):
     """Runs the collector with fake Windows answers, so it works on any computer."""
 
