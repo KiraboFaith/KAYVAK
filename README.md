@@ -34,6 +34,18 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
+### Collecting without a terminal (Windows)
+
+Open PowerShell with "Run as administrator" (the disk counters need it), then in `backend`:
+
+```
+python manage.py install_task --dry-run   # only prints what it would do
+python manage.py install_task             # hourly collector + shutdown check at every login
+python manage.py install_task --remove    # undo
+```
+
+The tasks run on battery too, because that is when a laptop's readings matter.
+
 ## Project structure
 
 ```
