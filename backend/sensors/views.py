@@ -1,5 +1,9 @@
 import platform
+from datetime import timedelta
 
+from django.db.models import Avg
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .comparison import compare, describe_snapshot
@@ -10,7 +14,25 @@ from .analysis import (
     BATTERY_WARNING, BATTERY_CRITICAL, DRIVE_WARNING, DRIVE_CRITICAL,
 )
 
-TREND_WINDOW = 20  # how many recent readings the trend looks at
+TREND_WINDOW_DAYS = 30  # how far back the trend looks
+
+
+def daily_average(field, source):
+    """One (day, average) point per day for the last TREND_WINDOW_DAYS, oldest first.
+
+    Only readings from the same source are mixed (simulated numbers must never bend a real
+    laptop's trend), and days with no measurement of this field are left out.
+    """
+    since = timezone.now() - timedelta(days=TREND_WINDOW_DAYS)
+    rows = (
+        HealthReading.objects
+        .filter(source=source, timestamp__gte=since, **{f'{field}__isnull': False})
+        .annotate(day=TruncDate('timestamp'))
+        .values('day')
+        .annotate(value=Avg(field))
+        .order_by('day')
+    )
+    return [(row['day'].toordinal(), row['value']) for row in rows]
 
 
 @api_view(['GET'])
@@ -34,14 +56,12 @@ def health_report(request):
 
     report = analyse(reading)
 
-    # Knowledge: look back at recent readings (oldest first) to see where things are heading
-    recent = list(HealthReading.objects.all()[:TREND_WINDOW])[::-1]
+    # Knowledge: look back at the daily averages to see where things are heading
     trends = {
-        'battery': trend([r.battery_health for r in recent], BATTERY_WARNING, BATTERY_CRITICAL),
-        'drive': trend(
-            [r.drive_health for r in recent if r.drive_health is not None],
-            DRIVE_WARNING, DRIVE_CRITICAL,
-        ),
+        'battery': trend(daily_average('battery_health', reading.source),
+                         BATTERY_WARNING, BATTERY_CRITICAL),
+        'drive': trend(daily_average('drive_health', reading.source),
+                       DRIVE_WARNING, DRIVE_CRITICAL),
     }
 
     # Checks Windows would not answer: shown to the user, never silently counted as passed

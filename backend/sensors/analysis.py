@@ -9,9 +9,12 @@ BATTERY_WARNING = 80
 BATTERY_CRITICAL = 60
 DRIVE_WARNING = 70
 DRIVE_CRITICAL = 40
-# Trend settings (the Knowledge part of MAPE-K: past readings predict the future)
-TREND_MIN_READINGS = 5     # fewer readings than this is not enough to call a trend
-TREND_STABLE_BAND = 0.1    # a change smaller than this per check counts as "stable"
+# Trend settings (the Knowledge part of MAPE-K: past readings predict the future).
+# Time is measured in DAYS, not in "checks": the collector can run every minute or every hour,
+# and a prediction must not change meaning when that setting changes.
+# Both numbers are our own choices, not from a source. TODO: justify them in the write-up.
+TREND_MIN_POINTS = 5      # need readings from at least this many different days
+TREND_STABLE_BAND = 0.02  # a change smaller than this many points per day counts as "stable"
 
 def _level(value, warning, critical):
     if value < critical:
@@ -150,25 +153,31 @@ def analyse(reading):
 
     return {'overall': overall, 'findings': findings}
 
-def trend(values, warning, critical):
-    """Looks at past readings (oldest first) and says where a value is heading.
+def trend(points, warning, critical):
+    """Looks at past readings and says where a value is heading, in days.
 
-    Returns None when there are too few readings. Otherwise returns the
-    direction, the average change per check, and how many more checks until
-    the value drops below the Warning and Critical limits (0 = already there,
+    points: (day, value) pairs, oldest first. "day" is any number that grows by 1 per day
+    (for example date.toordinal()). One point per day is expected (a daily average).
+
+    Returns None when there are too few days of history. Otherwise returns the direction,
+    the average change per day, how many days the history covers, and how many more days
+    until the value drops below the Warning and Critical limits (0 = already there,
     None = not heading there).
     """
-    n = len(values)
-    if n < TREND_MIN_READINGS:
+    n = len(points)
+    if n < TREND_MIN_POINTS:
         return None
 
-    # Straight-line fit through the readings (least squares), x = check number.
-    mean_x = (n - 1) / 2
+    days = [float(d) for d, _ in points]
+    values = [float(v) for _, v in points]
+    mean_x = sum(days) / n
     mean_y = sum(values) / n
-    slope = (
-        sum((i - mean_x) * (v - mean_y) for i, v in enumerate(values))
-        / sum((i - mean_x) ** 2 for i in range(n))
-    )
+    spread = sum((x - mean_x) ** 2 for x in days)
+    if spread == 0:                      # every point on the same day: no time has passed
+        return None
+
+    # Straight-line fit through the readings (least squares), x = day.
+    slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(days, values)) / spread
 
     if abs(slope) < TREND_STABLE_BAND:
         direction = 'stable'
@@ -179,7 +188,7 @@ def trend(values, warning, critical):
 
     current = values[-1]
 
-    def checks_until(limit):
+    def days_until(limit):
         if current < limit:
             return 0
         if direction != 'falling':
@@ -188,7 +197,8 @@ def trend(values, warning, critical):
 
     return {
         'direction': direction,
-        'change_per_check': round(slope, 2),
-        'checks_to_warning': checks_until(warning),
-        'checks_to_critical': checks_until(critical),
+        'change_per_day': round(slope, 3),
+        'based_on_days': round(days[-1] - days[0]),
+        'days_to_warning': days_until(warning),
+        'days_to_critical': days_until(critical),
     }

@@ -1,6 +1,8 @@
+from datetime import timedelta
 from types import SimpleNamespace
 
 from django.test import SimpleTestCase, TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient as _APIClient
 
 from .analysis import analyse, trend
@@ -158,33 +160,53 @@ class RepairJudgementTests(SimpleTestCase):
         for f in report['findings']:
             self.assertNotEqual(f['repair'], 'Major repair')
                 
-class TrendTests(SimpleTestCase):
-    def test_too_few_readings_gives_no_trend(self):
-        self.assertIsNone(trend([90, 89, 88], 60, 40))
+def daily(values):
+    """(day, value) points on consecutive days, the way views.daily_average gives them."""
+    return list(enumerate(values))
 
-    def test_falling_battery_predicts_checks_to_limits(self):
-        # drops 2 per check, now at 80: 10 checks to reach 60, 20 to reach 40
-        result = trend([88, 86, 84, 82, 80], 60, 40)
+
+class TrendTests(SimpleTestCase):
+    def test_too_few_days_gives_no_trend(self):
+        self.assertIsNone(trend(daily([90, 89, 88]), 60, 40))
+
+    def test_many_readings_on_one_day_is_not_a_trend(self):
+        # 50 readings in one afternoon: no time has passed, so no direction can be claimed
+        self.assertIsNone(trend([(100, 90 - i * 0.1) for i in range(50)], 60, 40))
+
+    def test_falling_battery_predicts_days_to_limits(self):
+        # drops 2 points per DAY, now at 80: 10 days to reach 60, 20 days to reach 40
+        result = trend(daily([88, 86, 84, 82, 80]), 60, 40)
         self.assertEqual(result['direction'], 'falling')
-        self.assertEqual(result['change_per_check'], -2.0)
-        self.assertEqual(result['checks_to_warning'], 10)
-        self.assertEqual(result['checks_to_critical'], 20)
+        self.assertEqual(result['change_per_day'], -2.0)
+        self.assertEqual(result['days_to_warning'], 10)
+        self.assertEqual(result['days_to_critical'], 20)
+        self.assertEqual(result['based_on_days'], 4)
+
+    def test_gaps_between_days_are_respected(self):
+        # same values as above but one reading every 2 days: the fall is 1 point per day
+        result = trend([(0, 88), (2, 86), (4, 84), (6, 82), (8, 80)], 60, 40)
+        self.assertEqual(result['change_per_day'], -1.0)
+        self.assertEqual(result['days_to_warning'], 20)
 
     def test_flat_readings_are_stable_with_no_prediction(self):
-        result = trend([90, 90, 90, 90, 90], 60, 40)
+        result = trend(daily([90, 90, 90, 90, 90]), 60, 40)
         self.assertEqual(result['direction'], 'stable')
-        self.assertIsNone(result['checks_to_warning'])
+        self.assertIsNone(result['days_to_warning'])
+
+    def test_very_slow_drift_is_still_stable(self):
+        result = trend(daily([90, 89.99, 89.98, 89.97, 89.96]), 60, 40)
+        self.assertEqual(result['direction'], 'stable')
 
     def test_rising_readings_never_predict_failure(self):
-        result = trend([70, 75, 80, 85, 90], 60, 40)
+        result = trend(daily([70, 75, 80, 85, 90]), 60, 40)
         self.assertEqual(result['direction'], 'rising')
-        self.assertIsNone(result['checks_to_critical'])
+        self.assertIsNone(result['days_to_critical'])
 
     def test_already_below_limit_is_zero(self):
-        result = trend([70, 65, 55, 50, 45], 60, 40)
-        self.assertEqual(result['checks_to_warning'], 0)
-        self.assertGreater(result['checks_to_critical'], 0)
-        
+        result = trend(daily([70, 65, 55, 50, 45]), 60, 40)
+        self.assertEqual(result['days_to_warning'], 0)
+        self.assertGreater(result['days_to_critical'], 0)
+
 class DriveHealthTests(SimpleTestCase):
     """Commit 2: a hard drive's Wear 0 must not turn into "100% healthy"."""
 
@@ -238,18 +260,55 @@ class HealthEndpointTests(TestCase):
     def test_404_when_no_readings(self):
         self.assertEqual(APIClient().get(self.url).status_code, 404)
 
-    def test_report_includes_trends_once_enough_history_exists(self):
-        for battery in (88, 86, 84, 82, 80):
-            HealthReading.objects.create(battery_health=battery, drive_health=95)
+    def make_history(self, batteries, drive=95, source='simulated'):
+        """One reading per day, ending today. batteries is oldest first."""
+        now = timezone.now()
+        for i, battery in enumerate(batteries):
+            reading = HealthReading.objects.create(
+                battery_health=battery, drive_health=drive, source=source)
+            HealthReading.objects.filter(pk=reading.pk).update(
+                timestamp=now - timedelta(days=len(batteries) - 1 - i))
+
+    def test_report_includes_trends_once_enough_days_of_history_exist(self):
+        self.make_history([98, 96, 94, 92, 90])      # battery warning limit is 80
         data = APIClient().get(self.url).data
         self.assertEqual(data['trends']['battery']['direction'], 'falling')
+        self.assertEqual(data['trends']['battery']['days_to_warning'], 5)
         self.assertEqual(data['trends']['drive']['direction'], 'stable')
 
-    def test_trends_are_none_with_little_history(self):
-        HealthReading.objects.create(battery_health=90, drive_health=90)
+    def test_many_readings_in_one_day_give_no_trend(self):
+        for battery in (88, 86, 84, 82, 80, 78):
+            HealthReading.objects.create(battery_health=battery, drive_health=95)
+        self.assertIsNone(APIClient().get(self.url).data['trends']['battery'])
+
+    def test_several_readings_a_day_are_averaged_into_one_point(self):
+        now = timezone.now()
+        for day in range(5):
+            for battery in (90 - day * 2 + 1, 90 - day * 2 - 1):     # average = 90 - 2*day
+                r = HealthReading.objects.create(battery_health=battery, drive_health=95)
+                HealthReading.objects.filter(pk=r.pk).update(
+                    timestamp=now - timedelta(days=4 - day))
+        trend_data = APIClient().get(self.url).data['trends']['battery']
+        self.assertEqual(trend_data['change_per_day'], -2.0)
+
+    def test_simulated_readings_do_not_bend_a_real_trend(self):
+        self.make_history([88, 86, 84, 82, 80], source='windows')
+        for battery in (10, 10, 10):                      # demo junk on the same days
+            HealthReading.objects.create(battery_health=battery, drive_health=95, source='simulated')
         data = APIClient().get(self.url).data
-        self.assertIsNone(data['trends']['battery'])        
-    
+        self.assertEqual(data['source'], 'simulated')     # newest reading is the junk one
+        self.assertIsNone(data['trends']['battery'])      # only 1 simulated day: no trend
+        HealthReading.objects.filter(source='simulated').delete()
+        data = APIClient().get(self.url).data
+        self.assertEqual(data['trends']['battery']['change_per_day'], -2.0)
+
+    def test_old_readings_outside_the_window_are_ignored(self):
+        self.make_history([88, 86, 84, 82, 80])
+        HealthReading.objects.all().update(
+            timestamp=timezone.now() - timedelta(days=90))
+        HealthReading.objects.create(battery_health=80, drive_health=95)
+        self.assertIsNone(APIClient().get(self.url).data['trends']['battery'])
+
     def test_report_says_where_the_reading_came_from(self):
         HealthReading.objects.create(battery_health=90, drive_health=90, source='windows')
         self.assertEqual(APIClient().get(self.url).data['source'], 'windows')

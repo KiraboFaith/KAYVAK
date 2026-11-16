@@ -1,15 +1,24 @@
 import { STATUS } from '../statusStyles';
 
+// "12 days", "3 months", "more than 2 years": a number a non-technical reader can picture.
+function formatDays(days) {
+  if (days < 1) return 'less than a day';
+  if (days === 1) return '1 day';
+  if (days <= 60) return `${days} days`;
+  if (days < 730) return `${Math.round(days / 30)} months`;
+  return 'more than 2 years';
+}
+
 // Turns the backend trend into one plain sentence for a non-technical reader.
 function trendText(trend) {
-  if (!trend) return 'Collecting readings to spot a trend...';
-  if (trend.checks_to_critical === 0) return 'Already in the critical range.';
+  if (!trend) return 'Collecting readings to spot a trend (needs 5 days of readings)...';
+  if (trend.days_to_critical === 0) return 'Already in the critical range.';
   if (trend.direction === 'falling') {
     const next =
-      trend.checks_to_warning === 0
-        ? `about ${trend.checks_to_critical} checks from critical`
-        : `about ${trend.checks_to_warning} checks from a warning`;
-    return `Falling ${Math.abs(trend.change_per_check)} points per check, ${next}.`;
+      trend.days_to_warning === 0
+        ? `about ${formatDays(trend.days_to_critical)} from critical`
+        : `about ${formatDays(trend.days_to_warning)} from a warning`;
+    return `Falling ${Math.abs(trend.change_per_day)} points a day over the last ${trend.based_on_days} days, ${next}.`;
   }
   return trend.direction === 'rising' ? 'Improving.' : 'Holding steady.';
 }

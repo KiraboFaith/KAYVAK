@@ -69,7 +69,10 @@ python manage.py test sensors
 - Analyse: `backend/sensors/analysis.py` compares it with safe limits.
 - Plan: the advice for each problem is chosen there too.
 - Execute: the dashboard shows the result and a printable report. Nothing is repaired.
-- Knowledge: the limits and every past reading are kept in the database.
+- Knowledge: the limits and every past reading are kept in the database. Trends use daily
+  averages over the last 30 days and are only shown once there are readings from 5 different
+  days, so they are in days, not in "checks". For a demo, `python manage.py simulate_health --history 14`
+  first adds 14 days of made-up history.
 
 ## Before and after a repair (snapshot)
 
