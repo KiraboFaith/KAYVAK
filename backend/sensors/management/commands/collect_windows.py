@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -16,6 +17,14 @@ from sensors.notify import (
 )
 from sensors.outbox import send_or_queue
 CHECK_TIME_LIMIT = 60  # NFR-03: a standard check should finish within 60 seconds
+
+# Speed settings. Battery wear and the Windows licence change over days or months, not
+# minutes, so they are re-read only now and then and the last good value is reused in
+# between. Set a value to 0 to read it on every check.
+BATTERY_CACHE_SECONDS = 1800   # battery health + cycle count: re-read every 30 minutes
+LICENCE_CACHE_SECONDS = 3600   # licence status: re-read every hour
+POWERSHELL_TIMEOUT = 60        # one stuck PowerShell step is given up after this many seconds
+
 # Drive: a health WORD from Windows is not a measurement. "Healthy" alone tells us nothing
 # about how much life is left, so it gives no number. "Warning" and "Unhealthy" are real
 # signals, so they are mapped to these two numbers (our own simple mapping).
@@ -71,7 +80,7 @@ MALWARE_SCRIPT = (
 def run_powershell(script):
     result = subprocess.run(
         ['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
-        capture_output=True, text=True, timeout=90,
+        capture_output=True, text=True, timeout=POWERSHELL_TIMEOUT,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or 'PowerShell returned an error')
@@ -130,6 +139,16 @@ def read_battery():
     return battery_percent_from_xml(path)
 
 
+def read_battery_and_cycles():
+    """One powercfg report gives both numbers. Cycles are optional: some laptops have none."""
+    percent = read_battery()
+    try:
+        cycles = read_battery_cycles()
+    except Exception:
+        cycles = None
+    return percent, cycles
+
+
 def drive_percent_from_json(text):
     """Worst measured drive wins. Returns None when Windows gave nothing we can trust.
 
@@ -181,6 +200,21 @@ def disk_details_from_json(text):
 def read_disk_details():
     return disk_details_from_json(run_powershell(DISK_DETAIL_SCRIPT))
 
+
+def read_disks():
+    """One PowerShell call gives both the drive health number and the per-disk details.
+
+    Before, the same disks were queried twice in two separate PowerShell processes.
+    Returns (drive_percent, details). details is None if only that part could not be read.
+    """
+    text = run_powershell(DISK_DETAIL_SCRIPT)
+    drive = drive_percent_from_json(text)   # raises if Windows gave nothing usable
+    try:
+        details = disk_details_from_json(text)
+    except Exception:
+        details = None
+    return drive, details
+
 def charge_from_json(text):
     """Returns (charge_percent, charging). Anything Windows does not tell us stays None."""
     if not text:
@@ -210,6 +244,17 @@ def read_malware():
     return int(run_powershell(MALWARE_SCRIPT) or 0) > 0
 
 
+def timed(function):
+    """Runs one step and returns (value, error, seconds). Never raises, so one failing
+    step cannot stop the others."""
+    started = time.monotonic()
+    try:
+        value = function()
+        return value, None, round(time.monotonic() - started, 1)
+    except Exception as error:
+        return None, error, round(time.monotonic() - started, 1)
+
+
 class Command(BaseCommand):
     help = 'Reads real health values from this Windows laptop and saves them'
     def __init__(self, *args, **kwargs):
@@ -217,6 +262,7 @@ class Command(BaseCommand):
         self.alerted = set()  # urgent problems the owner has already been told about
         self.emailed = set()  # urgent problems already sent by email
         self.low_charge_warned = False
+        self.cache = {}       # key -> (time it was read, value) for slow-changing readings
     
     def add_arguments(self, parser):
         parser.add_argument('--once', action='store_true', help='take one reading and stop')
@@ -231,42 +277,69 @@ class Command(BaseCommand):
                 break
             time.sleep(options['interval'])
 
+    def cached(self, key, max_age, function):
+        """Reuses the last good value if it is younger than max_age seconds."""
+        entry = self.cache.get(key)
+        if max_age > 0 and entry and time.monotonic() - entry[0] < max_age:
+            return entry[1]
+        value = function()   # a failure raises and is NOT cached
+        self.cache[key] = (time.monotonic(), value)
+        return value
+
     def collect_once(self):
         started = time.monotonic()
+
+        # The five readings do not depend on each other, so they run at the same time.
+        # The check now takes about as long as the slowest step, not the sum of all steps.
+        steps = {
+            'charge': read_charge,
+            'battery': lambda: self.cached('battery', BATTERY_CACHE_SECONDS, read_battery_and_cycles),
+            'disks': read_disks,
+            'licence': lambda: self.cached('licence', LICENCE_CACHE_SECONDS, read_licence),
+            'malware': read_malware,
+        }
+        with ThreadPoolExecutor(max_workers=len(steps)) as pool:
+            futures = {name: pool.submit(timed, function) for name, function in steps.items()}
+            results = {name: future.result() for name, future in futures.items()}
+
+        # Show where the time went, so the slow step is visible instead of guessed.
+        breakdown = ', '.join(f'{name} {seconds} s' for name, (_, _, seconds) in results.items())
+        self.stdout.write(f'Step times: {breakdown}')
+
         charge_percent, charging = None, None   # not every laptop reports these: not an error
-        try:
-            charge_percent, charging = read_charge()
-        except Exception as error:
+        value, error, _ = results['charge']
+        if error:
             self.stdout.write(f'Charge level not read: {error}')
-        try:
-            battery = read_battery()
-        except Exception as error:
+        else:
+            charge_percent, charging = value
+
+        value, error, _ = results['battery']
+        if error:
             self.stderr.write(f'Battery not read, reading skipped: {error}')
             return
-        battery_cycles = None   # some laptops do not report cycles: that is fine, not an error
-        try:
-            battery_cycles = read_battery_cycles()
-        except Exception as error:
-            self.stdout.write(f'Battery cycles not read: {error}')
-        try:
-            drive = read_drive()
-        except Exception as error:
+        battery, battery_cycles = value   # cycles may be None: some laptops do not report them
+
+        value, error, _ = results['disks']
+        if error:
             self.stderr.write(f'Drive not read, reading skipped: {error}')
             return
+        drive, disk_details = value
 
         # Licence and security: if Windows will not tell us, we say so instead of guessing.
         licence_valid, licence_checked = True, True
-        try:
-            licence_valid = read_licence()
-        except Exception as error:
+        value, error, _ = results['licence']
+        if error:
             licence_checked = False
             self.stdout.write(f'Licence could not be read, marked as not checked: {error}')
+        else:
+            licence_valid = value
         suspected_malware, malware_checked = False, True
-        try:
-            suspected_malware = read_malware()
-        except Exception as error:
+        value, error, _ = results['malware']
+        if error:
             malware_checked = False
             self.stdout.write(f'Windows Defender could not be read, marked as not checked: {error}')
+        else:
+            suspected_malware = value
 
         seconds = round(time.monotonic() - started, 1)
         if seconds > CHECK_TIME_LIMIT:
@@ -286,14 +359,17 @@ class Command(BaseCommand):
             charging=charging,
         )
         self.stdout.write(f'Inserted: {reading} (took {seconds} s)')
-        self.save_disk_details(reading)
+        self.save_disk_details(reading, disk_details)
         self.alert_if_urgent(reading)
         self.email_alerts(reading)
         
-    def save_disk_details(self, reading):
+    def save_disk_details(self, reading, details):
         """Saves the per-disk numbers. If this fails, the main reading is already saved."""
+        if details is None:
+            self.stderr.write('Disk details not saved: could not read the per-disk numbers')
+            return
         try:
-            for disk in read_disk_details():
+            for disk in details:
                 DiskReading.objects.create(reading=reading, **disk)
         except Exception as error:
             self.stderr.write(f'Disk details not saved: {error}')    
